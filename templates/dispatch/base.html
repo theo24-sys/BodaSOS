@@ -5,257 +5,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#FF6B00">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>{% block title %}BodaSOS{% endblock %}</title>
     {% load static %}
     <link rel="manifest" href="{% url 'web_manifest' %}">
     <link rel="icon" type="image/png" href="{% static 'dispatch/bodasos-icon.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'dispatch/bodasos-icon.png' %}">
     <style>
       :root {
-        color-scheme: dark;
-        --bg: #121212;
-        --bg-soft: #1a1a1a;
-        --panel: rgba(30, 30, 30, 0.94);
-        --panel-strong: #1f1f1f;
-        --text: #f4f7fb;
-        --muted: #a7b0bf;
-        --border: rgba(255, 255, 255, 0.08);
+        color-scheme: light;
+        --bg: #ffffff;
+        --surface: #f3f4f6;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #d1d5db;
         --accent: #ff6b00;
         --danger: #dc2626;
         --success: #10b981;
-        --shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+        --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
       }
 
       * { box-sizing: border-box; }
-
       html { scroll-behavior: smooth; }
-
       body {
         margin: 0;
-        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background:
-          radial-gradient(circle at top left, rgba(255, 107, 0, 0.16), transparent 30%),
-          radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
-          linear-gradient(180deg, #0d0d0d 0%, #121212 42%, #181818 100%);
-        color: var(--text);
         min-height: 100vh;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        color: var(--text);
       }
-
-      a { color: inherit; }
-
-      img { max-width: 100%; display: block; }
-
+      a { color: inherit; text-decoration: none; }
       .shell {
-        max-width: 1280px;
+        max-width: 1320px;
         margin: 0 auto;
-        padding: 20px 16px 32px;
+        padding: 18px 16px 32px;
       }
-
       .topbar {
-        position: sticky;
-        top: 0;
-        z-index: 30;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 14px;
-        padding: 14px 16px;
-        margin: -4px 0 20px;
-        background: rgba(17, 17, 17, 0.82);
+        gap: 16px;
+        padding: 16px 18px;
+        margin-bottom: 18px;
+        background: rgba(255, 255, 255, 0.92);
         border: 1px solid var(--border);
-        border-radius: 22px;
-        backdrop-filter: blur(18px);
+        border-radius: 24px;
         box-shadow: var(--shadow);
+        backdrop-filter: blur(10px);
       }
-
       .brand {
         display: flex;
         align-items: center;
         gap: 12px;
         min-width: 0;
       }
-
       .brand-badge {
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         border-radius: 16px;
-        background: linear-gradient(160deg, rgba(255, 107, 0, 0.22), rgba(220, 38, 38, 0.12));
-        border: 1px solid rgba(255, 107, 0, 0.28);
+        background: linear-gradient(145deg, rgba(255, 107, 0, 0.16), rgba(220, 38, 38, 0.08));
+        border: 1px solid rgba(255, 107, 0, 0.22);
         display: grid;
         place-items: center;
         flex: 0 0 auto;
-        overflow: hidden;
       }
-
-      .brand-badge img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .brand-copy {
-        min-width: 0;
-      }
-
+      .brand-badge svg { width: 34px; height: 34px; }
       .brand-copy strong {
         display: block;
-        font-size: 1.05rem;
+        font-size: 1.08rem;
         letter-spacing: 0.02em;
       }
-
       .brand-copy span {
         display: block;
         color: var(--muted);
-        font-size: 0.85rem;
+        font-size: 0.84rem;
+        margin-top: 2px;
       }
-
+      .inline-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+      }
       .status-pill {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         padding: 10px 14px;
         border-radius: 999px;
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.24);
-        color: #b7f7dd;
-        font-size: 0.8rem;
+        background: #fef3c7;
+        border: 1px solid #fde68a;
+        color: #92400e;
         font-weight: 700;
+        font-size: 0.82rem;
         white-space: nowrap;
       }
-
       .status-dot {
-        width: 8px;
-        height: 8px;
+        width: 9px;
+        height: 9px;
         border-radius: 999px;
         background: var(--success);
-        box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.16);
       }
-
-      .install-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 11px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 107, 0, 0.28);
-        background: linear-gradient(135deg, rgba(255, 107, 0, 0.95), rgba(255, 122, 24, 0.9));
-        color: #fff;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      .install-button[hidden] { display: none !important; }
-
-      .messages {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 18px;
-        display: grid;
-        gap: 10px;
-      }
-
-      .messages li {
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.24);
-        color: #dcfff1;
-      }
-
-      .hero {
-        display: grid;
-        gap: 14px;
-        margin-bottom: 22px;
-      }
-
-      .eyebrow {
-        color: var(--accent);
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        font-size: 0.72rem;
-        font-weight: 900;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(2.1rem, 5vw, 4.4rem);
-        line-height: 0.96;
-        max-width: 13ch;
-      }
-
-      .subhead {
-        max-width: 70ch;
-        color: var(--muted);
-        font-size: 1rem;
-        line-height: 1.6;
-      }
-
-      .dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(12, minmax(0, 1fr));
-        gap: 18px;
-      }
-
-      .card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 22px;
-        padding: 18px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(16px);
-      }
-
-      .card h2, .card h3 { margin-top: 0; }
-
-      .panel-title {
-        margin: 0;
-        font-size: 1.02rem;
-        font-weight: 800;
-      }
-
-      .panel-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 14px;
-      }
-
-      .panel-lead {
-        color: var(--muted);
-        font-size: 0.92rem;
-        line-height: 1.5;
-      }
-
-      .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      .stat {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 14px;
-      }
-
-      .stat strong {
-        display: block;
-        font-size: 1.45rem;
-        line-height: 1;
-        margin-bottom: 6px;
-      }
-
-      .stat span {
-        color: var(--muted);
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-
       .button,
       button,
       input[type="submit"] {
@@ -263,187 +114,203 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
-        border: 0;
+        border: 1px solid transparent;
         border-radius: 14px;
         padding: 12px 16px;
-        background: linear-gradient(135deg, var(--accent), #ff7a18);
-        color: #10131a;
-        font-weight: 900;
-        text-decoration: none;
+        background: #ffb27a;
+        color: #111827;
+        font-weight: 800;
         cursor: pointer;
       }
-
       .button.secondary {
-        background: rgba(255, 255, 255, 0.05);
+        background: #ffffff;
+        border-color: var(--border);
         color: var(--text);
-        border: 1px solid var(--border);
       }
-
       .button.danger,
       button.danger,
       input[type="submit"].danger {
-        background: linear-gradient(135deg, var(--danger), #ef4444);
-        color: #fff;
+        background: var(--danger);
+        color: #ffffff;
       }
-
-      label {
-        display: block;
-        margin: 10px 0 6px;
+      .install-button {
+        background: var(--accent);
+        color: #ffffff;
+        border-color: rgba(0,0,0,0.04);
+      }
+      .install-button[hidden] { display: none !important; }
+      .install-banner {
+        display: none;
+        margin-bottom: 18px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+      }
+      .install-banner strong { display: block; margin-bottom: 4px; }
+      .messages {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 16px;
+        display: grid;
+        gap: 10px;
+      }
+      .messages li {
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #065f46;
+      }
+      .hero {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+      .eyebrow {
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.74rem;
+        font-weight: 900;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 4.2rem);
+        line-height: 0.98;
+        letter-spacing: -0.03em;
+        max-width: 13ch;
+      }
+      .subhead {
+        max-width: 74ch;
         color: var(--muted);
-        font-size: 0.9rem;
+        font-size: 1rem;
+        line-height: 1.65;
       }
-
-      input,
-      select,
-      textarea {
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .panel-title { margin: 0; font-size: 1.04rem; font-weight: 800; }
+      .panel-lead { color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 14px;
+      }
+      .stat strong { display: block; font-size: 1.35rem; line-height: 1; margin-bottom: 6px; }
+      .stat span {
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      label { display: block; margin: 10px 0 6px; color: var(--muted); font-size: 0.9rem; }
+      input, select, textarea {
         width: 100%;
         padding: 12px 14px;
         border-radius: 14px;
         border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.04);
+        background: #ffffff;
         color: var(--text);
       }
-
-      input::placeholder,
-      textarea::placeholder {
-        color: #7f8897;
-      }
-
-      textarea {
-        min-height: 110px;
-        resize: vertical;
-      }
-
-      input:focus,
-      select:focus,
-      textarea:focus {
+      textarea { min-height: 110px; resize: vertical; }
+      input:focus, select:focus, textarea:focus {
         outline: none;
-        border-color: rgba(255, 107, 0, 0.72);
-        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.16);
+        border-color: rgba(255, 107, 0, 0.7);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.12);
       }
-
-      .hint {
-        color: var(--muted);
-        font-size: 0.92rem;
-        line-height: 1.5;
-      }
-
+      .hint { color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
       .split-output {
         margin-top: 14px;
         padding: 12px 14px;
         border-radius: 14px;
-        background: rgba(255, 255, 255, 0.04);
+        background: #f9fafb;
         border: 1px dashed var(--border);
         color: var(--muted);
       }
-
       .map-shell {
         min-height: 420px;
         border-radius: 18px;
         overflow: hidden;
-        background: #0a0f17;
+        background: #f8fafc;
         border: 1px solid var(--border);
       }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-
-      th,
-      td {
-        text-align: left;
-        padding: 12px 10px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
-      }
-
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
       th {
         color: var(--muted);
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         text-transform: uppercase;
         letter-spacing: 0.09em;
       }
-
       .badge {
         padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.08);
+        background: #f3f4f6;
         display: inline-block;
         white-space: nowrap;
       }
-
-      .badge.success {
-        background: rgba(16, 185, 129, 0.12);
-        color: #9ff0cf;
+      .badge.success { background: #ecfdf5; color: #047857; }
+      .badge.warning { background: #fff7ed; color: #c2410c; }
+      .badge.danger { background: #fef2f2; color: #b91c1c; }
+      .surface {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 14px;
       }
-
-      .badge.warning {
-        background: rgba(255, 107, 0, 0.12);
-        color: #ffd0b0;
-      }
-
-      .badge.danger {
-        background: rgba(220, 38, 38, 0.12);
-        color: #ffb2b2;
-      }
-
       .col-12 { grid-column: span 12; }
       .col-8 { grid-column: span 8; }
       .col-6 { grid-column: span 6; }
       .col-5 { grid-column: span 5; }
       .col-4 { grid-column: span 4; }
-
+      .col-3 { grid-column: span 3; }
       .stack-form p { margin: 0 0 14px; }
-
-      .inline-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      .mobile-only {
-        display: none;
-      }
-
-      .surface {
-        background: rgba(255, 255, 255, 0.03);
+      .inline-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+      .mobile-only { display: none; }
+      .portal-shell {
         border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 14px;
+        border-radius: 22px;
+        background: #ffffff;
+        box-shadow: var(--shadow);
       }
-
-      .install-banner {
-        display: none;
-        margin: 0 0 18px;
-        padding: 14px 16px;
-        border-radius: 18px;
-        background: rgba(255, 107, 0, 0.1);
-        border: 1px solid rgba(255, 107, 0, 0.22);
-        color: #ffd7be;
-      }
-
-      .install-banner strong {
-        display: block;
-        margin-bottom: 4px;
-      }
-
       @media (max-width: 980px) {
+        .topbar { flex-direction: column; align-items: flex-start; }
         .dashboard-grid { grid-template-columns: 1fr; }
-        .col-12, .col-8, .col-6, .col-5, .col-4 { grid-column: span 12; }
+        .col-12, .col-8, .col-6, .col-5, .col-4, .col-3 { grid-column: span 12; }
         .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .topbar { align-items: flex-start; flex-direction: column; }
         .map-shell { min-height: 320px; }
       }
-
       @media (max-width: 720px) {
-        .shell { padding: 14px 12px 28px; }
+        .shell { padding: 12px 12px 24px; }
         .stat-grid { grid-template-columns: 1fr 1fr; }
         .panel-head { flex-direction: column; align-items: flex-start; }
         .button, button, input[type="submit"] { width: 100%; }
         .mobile-only { display: inline-flex; }
       }
-
       @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
       }
@@ -454,22 +321,25 @@
       <header class="topbar">
         <div class="brand">
           <div class="brand-badge" aria-hidden="true">
-            <img src="{% static 'dispatch/bodasos-icon.png' %}" alt="BodaSOS logo">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BodaSOS">
+              <path d="M15.362 5.214A8.252 8.252 0 0 1 12 21a8.25 8.25 0 0 1-5.962-13.953A8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" stroke="#FF6B00" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z" stroke="#DC2626" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="12" r="10.25" stroke="#111827" stroke-opacity="0.12"/>
+            </svg>
           </div>
           <div class="brand-copy">
-            <strong>BodaSOS</strong>
-            <span>Kenyan emergency dispatch for boda boda networks</span>
+            <strong><span style="color:#FF6B00">Boda</span>SOS</strong>
+            <span>{% if request.user.is_authenticated %}{{ request.user.get_username }}{% else %}Public caller locked screen{% endif %}</span>
           </div>
         </div>
         <div class="inline-actions">
-          <span class="status-pill"><span class="status-dot"></span>{% if request.user.is_authenticated %}{{ request.user.get_username }}{% else %}Public caller{% endif %}</span>
+          <span class="status-pill"><span class="status-dot"></span>{% if request.user.is_authenticated %}{{ request.user.get_username }}{% else %}Caller access gated{% endif %}</span>
           {% if request.user.is_authenticated %}
             <a class="button secondary" href="{% url 'portal' %}">Portal</a>
             <a class="button secondary" href="{% url 'logout' %}">Logout</a>
           {% else %}
             <a class="button secondary" href="{% url 'login' %}">Staff login</a>
           {% endif %}
-          <button type="button" class="install-button" id="install-app-btn" hidden>Install app</button>
         </div>
       </header>
 

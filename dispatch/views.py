@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.templatetags.static import static
 from django.urls import reverse
@@ -31,6 +32,8 @@ from .services import assign_nearest_rider, find_nearest_rider
 
 
 logger = logging.getLogger(__name__)
+PUBLIC_ACCESS_SESSION_KEY = "bodasos_public_access_granted"
+PUBLIC_ACCESS_SESSION_SECONDS = 120 * 60
 
 
 def _user_role(user) -> str:
@@ -61,6 +64,31 @@ def _base_public_context():
     }
 
 
+def _has_public_access(request) -> bool:
+    granted_at = request.session.get(PUBLIC_ACCESS_SESSION_KEY)
+    if not granted_at:
+        return False
+    return True
+
+
+def _grant_public_access(request) -> None:
+    request.session[PUBLIC_ACCESS_SESSION_KEY] = True
+    request.session.set_expiry(PUBLIC_ACCESS_SESSION_SECONDS)
+
+
+def _clear_public_access(request) -> None:
+    request.session.pop(PUBLIC_ACCESS_SESSION_KEY, None)
+
+
+def _valid_caller_secret(value: str) -> bool:
+    candidate = (value or "").strip()
+    if not candidate:
+        return False
+    if candidate == settings.PUBLIC_CALLER_TOKEN:
+        return True
+    return candidate == settings.PUBLIC_CALLER_PIN and candidate.isdigit() and len(candidate) == 4
+
+
 def _portal_context(request):
     role = _user_role(request.user)
     rider = getattr(request.user, "rider_profile", None)
@@ -88,7 +116,26 @@ def _home_context():
 def home(request):
     if request.user.is_authenticated:
         return redirect("portal")
-    return render(request, "dispatch/home.html", _home_context() | _base_public_context())
+    if request.method == "POST":
+        access_value = request.POST.get("access_code", "")
+        if _valid_caller_secret(access_value):
+            _grant_public_access(request)
+            messages.success(request, "Public access unlocked for emergency intake.")
+            return redirect("home")
+        messages.error(request, "Invalid PIN or access token.")
+    caller_access_granted = _has_public_access(request)
+    if not caller_access_granted:
+        _clear_public_access(request)
+    return render(
+        request,
+        "dispatch/home.html",
+        _home_context()
+        | _base_public_context()
+        | {
+            "caller_access_granted": caller_access_granted,
+            "caller_gate_label": "4-digit PIN or access token",
+        },
+    )
 
 
 @login_required
@@ -204,6 +251,9 @@ def rider_verify_phone(request):
 
 @require_http_methods(["GET", "POST"])
 def emergency_request_create(request):
+    if not _has_public_access(request):
+        messages.error(request, "Enter the public access PIN before submitting an emergency request.")
+        return redirect("home")
     if request.method == "POST":
         form = EmergencyRequestForm(request.POST)
         if form.is_valid():
