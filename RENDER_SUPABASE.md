@@ -19,7 +19,7 @@ postgresql://postgres.[your-id]:[your-password]@aws-0-us-east-1.pooler.supabase.
 - In Render, create a new Web Service and connect the GitHub repo.
 - Set the environment type to Python.
 - Set the build command to `./build.sh`.
-- Set the start command to `gunicorn salamanoda.wsgi:application`.
+- Set the start command to `gunicorn salamanoda.wsgi:application --bind 0.0.0.0:$PORT`.
 
 3. Environment variables
 

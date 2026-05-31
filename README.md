@@ -41,7 +41,7 @@ Render hosts the Django app, and Supabase provides the Postgres database with Po
 	- `DEBUG=false`.
 	- Optional: `AFRICASTALKING_USERNAME`, `AFRICASTALKING_API_KEY`, `AFRICASTALKING_SENDER_ID`, `REDIS_URL`.
 5. Use the build command `./build.sh`.
-6. Use the start command `gunicorn salamanoda.wsgi:application`.
+6. Use the start command `gunicorn salamanoda.wsgi:application --bind 0.0.0.0:$PORT`.
 
 For a copy-paste Render setup guide, see [RENDER_SUPABASE.md](RENDER_SUPABASE.md).
 
