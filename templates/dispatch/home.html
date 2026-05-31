@@ -3,49 +3,63 @@
 {% block title %}BodaSOS | Dispatch MVP{% endblock %}
 {% block content %}
 <section class="hero">
-  <div class="eyebrow">BodaSOS</div>
-  <h1>Mobile-first emergency dispatch for Kenya’s boda boda network.</h1>
+  <div class="eyebrow">Mobile dispatch core</div>
+  <h1>Rapid-response routing for Kenya’s boda boda network.</h1>
   <p class="subhead">
-    This prototype uses Django, DRF, browser geolocation, and a Leaflet + OpenStreetMap map to route emergencies to the nearest active rider without paid APIs.
+    The interface is organized for crisis work: emergency capture on the left, live map on the right, and management panels below. It stays readable on a phone at night and installs like an app from the browser.
   </p>
-  <div class="stats">
-    <div class="stat"><strong>{{ riders|length }}</strong><span>Registered riders in this demo</span></div>
-    <div class="stat"><strong>{{ requests|length }}</strong><span>Recent emergency requests</span></div>
-    <div class="stat"><strong>{{ saccos|length }}</strong><span>Registered Saccos</span></div>
-    <div class="stat"><strong>0</strong><span>Paid mapping or SMS dependencies</span></div>
+  <div class="stat-grid">
+    <div class="stat"><strong>{{ riders|length }}</strong><span>Active riders</span></div>
+    <div class="stat"><strong>{{ requests|length }}</strong><span>Live emergencies</span></div>
+    <div class="stat"><strong>{{ saccos|length }}</strong><span>Sacco clusters</span></div>
+    <div class="stat"><strong>Free</strong><span>OpenStreetMap routing</span></div>
   </div>
-  <div>
+  <div class="inline-actions">
     <a class="button" href="{% url 'rider_onboard' %}">Start rider onboarding</a>
     <a class="button secondary" href="{% url 'rider_verify_phone' %}">Verify rider phone</a>
+    <a class="button secondary mobile-only" href="#emergency-core">Open emergency core</a>
   </div>
 </section>
 
-<div class="grid">
-  <div class="card col-8">
+<div class="dashboard-grid">
+  <div class="card col-5" id="emergency-core">
     <div class="panel-head">
-      <h2 class="panel-title">Emergency request</h2>
-      <button class="button secondary" type="button" id="use-location-btn">Use my location</button>
+      <div>
+        <h2 class="panel-title">Broadcast emergency request</h2>
+        <div class="panel-lead">Capture the caller, type, and location in a few taps.</div>
+      </div>
+      <button class="button secondary" type="button" id="use-location-btn">Auto-locate</button>
     </div>
     <form method="post" action="{% url 'emergency_request_create' %}" class="stack-form" id="emergency-form">
       {% csrf_token %}
       {{ emergency_form.as_p }}
-      <p class="hint">Location can be filled automatically from the phone browser. That keeps the prototype free and usable on any smartphone.</p>
-      <input type="submit" value="Dispatch nearest rider">
+      <p class="hint">Use browser geolocation for the fastest response. The location can still be entered manually if GPS is unavailable.</p>
+      <input type="submit" class="danger" value="Dispatch nearest rider">
     </form>
     <div class="split-output" id="location-output">Waiting for location data.</div>
   </div>
 
   <div class="card col-4">
-    <h2 class="panel-title">Register rider</h2>
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Quick rider onboarding</h2>
+        <div class="panel-lead">Keep the intake focused for a mobile field workflow.</div>
+      </div>
+    </div>
     <form method="post" action="{% url 'rider_create' %}" class="stack-form" enctype="multipart/form-data">
       {% csrf_token %}
       {{ rider_form.as_p }}
-      <input type="submit" value="Save rider">
+      <input type="submit" value="Register responder">
     </form>
   </div>
 
-  <div class="card col-12">
-    <h2 class="panel-title">Sacco network</h2>
+  <div class="card col-3">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Sacco network</h2>
+        <div class="panel-lead">Cluster visibility for approved network chairs.</div>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
@@ -72,14 +86,22 @@
 
   <div class="card col-12">
     <div class="panel-head">
-      <h2 class="panel-title">Live map</h2>
+      <div>
+        <h2 class="panel-title">Live incident and fleet map</h2>
+        <div class="panel-lead">OpenStreetMap and Leaflet show riders, requests, and the active scene at a glance.</div>
+      </div>
       <span class="badge">Leaflet + OpenStreetMap</span>
     </div>
     <div id="dispatch-map" class="map-shell"></div>
   </div>
 
   <div class="card col-12">
-    <h2 class="panel-title">Current riders</h2>
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Available network responders</h2>
+        <div class="panel-lead">The dispatcher should only need this view when assigning a rider after authentication.</div>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
@@ -98,7 +120,7 @@
             <td>{{ rider.phone_number }}</td>
             <td>{{ rider.sacco_name|default:"-" }}</td>
             <td>{{ rider.latitude }}, {{ rider.longitude }}</td>
-            <td><span class="badge">{{ rider.status }}</span></td>
+            <td><span class="badge success">{{ rider.status }}</span></td>
             <td>{% if rider.is_verified %}Verified{% else %}Unverified{% endif %} · {% if rider.is_trained_first_aid %}First aid trained{% else %}Training pending{% endif %}</td>
           </tr>
         {% empty %}
@@ -109,7 +131,12 @@
   </div>
 
   <div class="card col-12">
-    <h2 class="panel-title">Recent emergency requests</h2>
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Recent dispatch log</h2>
+        <div class="panel-lead">A short feed of recent requests keeps the operator oriented without forcing a page scroll marathon.</div>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
@@ -126,7 +153,7 @@
             <td>{{ request.caller_name }}</td>
             <td>{{ request.emergency_type }}</td>
             <td>{{ request.latitude }}, {{ request.longitude }}</td>
-            <td><span class="badge">{{ request.status }}</span></td>
+            <td><span class="badge danger">{{ request.status }}</span></td>
             <td>{% if request.assigned_rider %}{{ request.assigned_rider.full_name }}{% else %}-{% endif %}</td>
           </tr>
         {% empty %}

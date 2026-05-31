@@ -4,12 +4,17 @@
 <section class="hero">
   <div class="eyebrow">Sacco approval board</div>
   <h1>{{ sacco.name }}</h1>
-  <p class="subhead">Chairman approval view for rider onboarding. Use the access token to open the demo dashboard.</p>
+  <p class="subhead">Chairman approval view for rider onboarding. Access stays limited to this Sacco cluster, so the board only sees its own riders.</p>
 </section>
 
-<div class="grid">
+<div class="dashboard-grid">
   <div class="card col-6">
-    <h2 class="panel-title">Pending riders</h2>
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Pending riders</h2>
+        <div class="panel-lead">Approve or suspend riders under this Sacco only.</div>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
@@ -24,7 +29,7 @@
             <td>{{ rider.full_name }}</td>
             <td>{{ rider.phone_number }}</td>
             <td>
-              <form method="post" style="display:inline;">
+              <form method="post" class="inline-actions">
                 {% csrf_token %}
                 <input type="hidden" name="rider_id" value="{{ rider.id }}">
                 <button name="action" value="approve" type="submit">Approve</button>
@@ -40,7 +45,12 @@
   </div>
 
   <div class="card col-6">
-    <h2 class="panel-title">Approved riders</h2>
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Approved riders</h2>
+        <div class="panel-lead">Operational riders available for dispatch.</div>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
@@ -54,7 +64,7 @@
           <tr>
             <td>{{ rider.full_name }}</td>
             <td>{{ rider.phone_number }}</td>
-            <td>{{ rider.status }}</td>
+            <td><span class="badge success">{{ rider.status }}</span></td>
           </tr>
         {% empty %}
           <tr><td colspan="3">No approved riders yet.</td></tr>

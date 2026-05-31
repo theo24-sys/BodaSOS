@@ -3,8 +3,10 @@ from __future__ import annotations
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.http import HttpResponse, JsonResponse
+from django.templatetags.static import static
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -66,6 +68,66 @@ def _home_context():
 
 def home(request):
     return render(request, "dispatch/home.html", _home_context())
+
+
+@never_cache
+def web_manifest(request):
+        return JsonResponse(
+                {
+                        "name": "BodaSOS",
+                        "short_name": "BodaSOS",
+                        "description": "Mobile-first emergency dispatch for Kenyan boda boda networks.",
+                        "start_url": "/",
+                        "scope": "/",
+                        "display": "standalone",
+                        "background_color": "#121212",
+                        "theme_color": "#FF6B00",
+                        "icons": [
+                                {
+                                        "src": static("dispatch/bodasos-icon.png"),
+                                        "sizes": "1024x1024",
+                                        "type": "image/png",
+                                        "purpose": "any maskable",
+                                }
+                        ],
+                }
+        )
+
+
+@never_cache
+def service_worker(request):
+        script = """
+const CACHE_NAME = 'bodasos-shell-v1';
+const CORE_ASSETS = ['/', '/riders/', '/manifest.webmanifest'];
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request)
+            .then((response) => {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                return response;
+            })
+            .catch(() => caches.match(event.request).then((cached) => cached || caches.match('/')))
+    );
+});
+"""
+        return HttpResponse(script, content_type="application/javascript")
 
 
 @require_http_methods(["GET", "POST"])

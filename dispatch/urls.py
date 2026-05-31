@@ -4,6 +4,8 @@ from . import views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("manifest.webmanifest", views.web_manifest, name="web_manifest"),
+    path("service-worker.js", views.service_worker, name="service_worker"),
     path("riders/", views.rider_list, name="rider_list"),
     path("riders/onboard/", views.rider_create, name="rider_onboard"),
     path("riders/new/", views.rider_create, name="rider_create"),

@@ -3,8 +3,8 @@
 <section class="hero">
   <div class="eyebrow">Rider registry</div>
   <h1>Registered riders</h1>
-  <p class="subhead">A basic operational view for the pilot team and county partners.</p>
-  <div>
+  <p class="subhead">A compact operational view for the pilot team and county partners.</p>
+  <div class="inline-actions">
     <a class="button secondary" href="{% url 'home' %}">Back to dispatch console</a>
     <a class="button" href="{% url 'rider_create' %}">Register rider</a>
   </div>
@@ -27,7 +27,7 @@
           <td>{{ rider.full_name }}</td>
           <td>{{ rider.phone_number }}</td>
           <td>{{ rider.sacco_name|default:"-" }}</td>
-          <td>{{ rider.status }}</td>
+            <td><span class="badge success">{{ rider.status }}</span></td>
           <td>{% if rider.is_phone_verified %}Phone verified{% else %}Awaiting SMS code{% endif %} · {{ rider.sacco_approval_status }}</td>
           <td>{{ rider.latitude }}, {{ rider.longitude }}</td>
         </tr>

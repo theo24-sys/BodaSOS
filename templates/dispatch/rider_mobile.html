@@ -5,37 +5,48 @@
   <div class="eyebrow">Rider mobile flow</div>
   <h1>{{ rider.full_name }}</h1>
   <p class="subhead">
-    This is the lightweight rider dashboard used for live demos. It shows phone verification, sacco approval, and the current dispatch state.
+    This layout is optimized for a rider on a small phone: the important action is one tap away, and the status is visible without zooming.
   </p>
-  <div class="stats">
+  <div class="stat-grid">
     <div class="stat"><strong>{{ rider.status }}</strong><span>Dispatch state</span></div>
     <div class="stat"><strong>{% if rider.is_phone_verified %}Yes{% else %}No{% endif %}</strong><span>Phone verified</span></div>
     <div class="stat"><strong>{% if rider.is_dispatch_ready %}Ready{% else %}Pending{% endif %}</strong><span>Dispatch readiness</span></div>
+    <div class="stat"><strong>{% if rider.is_verified %}Verified{% else %}Review{% endif %}</strong><span>Trust flag</span></div>
   </div>
 </section>
 
-<div class="grid">
+<div class="dashboard-grid">
   <div class="card col-8">
     <div class="panel-head">
-      <h2 class="panel-title">Update location</h2>
+      <div>
+        <h2 class="panel-title">Update location</h2>
+        <div class="panel-lead">Share your GPS position before marking yourself active.</div>
+      </div>
       <button class="button secondary" type="button" id="share-location-btn">Use my location</button>
     </div>
     <form method="post" class="stack-form">
       {% csrf_token %}
       <input type="hidden" name="latitude" id="rider-latitude">
       <input type="hidden" name="longitude" id="rider-longitude">
-      <button type="submit" name="mark_active" value="1">Mark active and save location</button>
+      <button class="danger" type="submit" name="mark_active" value="1">Mark active and save location</button>
     </form>
     <div class="split-output" id="rider-location-output">Waiting for GPS permission.</div>
   </div>
 
   <div class="card col-4">
-    <h2 class="panel-title">Profile status</h2>
-    <p><strong>Sacco:</strong> {{ rider.sacco_name|default:"Unassigned" }}</p>
-    <p><strong>National ID:</strong> {{ rider.national_id }}</p>
-    <p><strong>NTSA License:</strong> {{ rider.ntsa_license_number }}</p>
-    <p><strong>Sacco approval:</strong> {{ rider.sacco_approval_status }}</p>
-    <p><strong>Verified:</strong> {% if rider.is_verified %}Yes{% else %}Pending admin review{% endif %}</p>
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Profile status</h2>
+        <div class="panel-lead">Only the operational facts needed for dispatch are shown here.</div>
+      </div>
+    </div>
+    <div class="surface">
+      <p><strong>Sacco:</strong> {{ rider.sacco_name|default:"Unassigned" }}</p>
+      <p><strong>National ID:</strong> {{ rider.national_id }}</p>
+      <p><strong>NTSA License:</strong> {{ rider.ntsa_license_number }}</p>
+      <p><strong>Sacco approval:</strong> {{ rider.sacco_approval_status }}</p>
+      <p><strong>Verified:</strong> {% if rider.is_verified %}Yes{% else %}Pending admin review{% endif %}</p>
+    </div>
   </div>
 </div>
 

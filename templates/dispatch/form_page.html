@@ -3,10 +3,16 @@
 <section class="hero">
   <div class="eyebrow">{{ title }}</div>
   <h1>{{ title }}</h1>
-  <p class="subhead">Use this form to test the dispatch flow in the browser.</p>
+  <p class="subhead">Keep this page uncluttered so the form can be completed quickly on a phone or a low-light field screen.</p>
 </section>
 <div class="card">
-  <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %}>
+  <div class="panel-head">
+    <div>
+      <h2 class="panel-title">{{ title }}</h2>
+      <div class="panel-lead">Minimal input surface for dispatch and onboarding flows.</div>
+    </div>
+  </div>
+  <form method="post" class="stack-form" {% if multipart %}enctype="multipart/form-data"{% endif %}>
     {% csrf_token %}
     {{ form.as_p }}
     <input type="submit" value="Submit">
