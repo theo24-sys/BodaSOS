@@ -333,7 +333,7 @@
           </div>
         </div>
         <div class="inline-actions">
-          <span class="status-pill"><span class="status-dot"></span>{% if request.user.is_authenticated %}{{ request.user.get_username }}{% else %}Caller access gated{% endif %}</span>
+          <span class="status-pill"><span class="status-dot"></span>{% if request.user.is_authenticated %}{{ request.user.get_username }}{% else %}Patient intake open{% endif %}</span>
           {% if request.user.is_authenticated %}
             <a class="button secondary" href="{% url 'portal' %}">Portal</a>
             <a class="button secondary" href="{% url 'logout' %}">Logout</a>

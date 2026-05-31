@@ -2,10 +2,10 @@
 {% block title %}BodaSOS | Portal{% endblock %}
 {% block content %}
 <section class="hero">
-  <div class="eyebrow">Authenticated portal</div>
+  <div class="eyebrow">Operator & responder terminal</div>
   <h1>{{ role_label }}</h1>
   <p class="subhead">
-    This is the role-gated control surface. Public callers cannot see this page, and each role only sees the actions it is supposed to handle.
+    This terminal stays hidden from public patients. It shows the secure surfaces for admin, riders, and Sacco leadership only.
   </p>
   <div class="stat-grid">
     <div class="stat"><strong>{{ current_role }}</strong><span>Active role</span></div>
@@ -19,22 +19,24 @@
   <div class="card col-6">
     <div class="panel-head">
       <div>
-        <h2 class="panel-title">Access boundary</h2>
-        <div class="panel-lead">The portal exposes only the current role's operational path.</div>
+        <h2 class="panel-title">Fleet telemetry</h2>
+        <div class="panel-lead">A live summary of the operational network for the current operator role.</div>
       </div>
     </div>
     <div class="surface">
       <p><strong>Username:</strong> {{ request.user.get_username }}</p>
       <p><strong>Role:</strong> {{ role_label }}</p>
-      <p><strong>Permission note:</strong> Public data stays out of this page. Callers stay on the emergency form, riders stay on their own dashboard, and chairmen stay in their Sacco boundary.</p>
+      <p><strong>Riders:</strong> {{ rider_count }}</p>
+      <p><strong>Saccos:</strong> {{ sacco_count }}</p>
+      <p><strong>Emergency requests:</strong> {{ emergency_count }}</p>
     </div>
   </div>
 
   <div class="card col-6">
     <div class="panel-head">
       <div>
-        <h2 class="panel-title">Available actions</h2>
-        <div class="panel-lead">Role-aware shortcuts for the active session.</div>
+        <h2 class="panel-title">Role shortcuts</h2>
+        <div class="panel-lead">Open the exact dashboard for the authenticated role.</div>
       </div>
     </div>
     <div class="inline-actions">
@@ -49,6 +51,38 @@
       {% endif %}
       {% if request.user.is_superuser %}
         <a class="button" href="/admin/">Open Django admin</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-grid" style="margin-top:18px;">
+  <div class="card col-4">
+    <div class="panel-head"><div><h2 class="panel-title">Admin dashboard</h2><div class="panel-lead">System control and global oversight.</div></div></div>
+    <div class="surface">
+      <p>Use Django admin for full CRUD, configs, and global access.</p>
+      <a class="button" href="/admin/">Open admin</a>
+    </div>
+  </div>
+  <div class="card col-4">
+    <div class="panel-head"><div><h2 class="panel-title">Rider dashboard</h2><div class="panel-lead">Availability and live location.</div></div></div>
+    <div class="surface">
+      {% if rider_profile %}
+        <p>{{ rider_profile.full_name }} can update status and location here.</p>
+        <a class="button" href="{% url 'rider_mobile_dashboard' rider_profile.id %}">Open rider view</a>
+      {% else %}
+        <p>Sign in with a rider account to access this view.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card col-4">
+    <div class="panel-head"><div><h2 class="panel-title">Sacco dashboard</h2><div class="panel-lead">Cluster approval and compliance.</div></div></div>
+    <div class="surface">
+      {% if chairman_sacco %}
+        <p>{{ chairman_sacco.name }} approvals and rider compliance.</p>
+        <a class="button" href="{% url 'sacco_dashboard' chairman_sacco.slug %}?token={{ chairman_sacco.access_token }}">Open Sacco view</a>
+      {% else %}
+        <p>Chairmen only see their own Sacco cluster here.</p>
       {% endif %}
     </div>
   </div>
