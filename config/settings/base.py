@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "rest_framework",
     "corsheaders",
+    "channels",
     "core",
     "accounts",
     "patients",
@@ -109,4 +110,14 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
+}
+
+# Channels configuration (uses Redis via REDIS_URL)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [config("REDIS_URL", default="redis://127.0.0.1:6379")],
+        },
+    },
 }

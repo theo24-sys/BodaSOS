@@ -2,21 +2,26 @@ import logging
 
 from django.core.mail import send_mail
 
+from . import tasks
 from .push import send_push_notification
-from .sms import send_dispatch_sms, send_fallback_sms, send_sos_confirmation as sms_send_sos_confirmation
+from .sms import send_fallback_sms
 
 
 logger = logging.getLogger(__name__)
 
 
 def send_dispatch_alert(rider, job):
+	# enqueue the dispatch alert to Celery for background delivery and retries
 	try:
-		push_result = send_push_notification(rider.user_id, "New dispatch", f"Emergency {job.emergency_type}")
-		if push_result:
-			return True
-	except Exception as exc:  # pragma: no cover - integration path
-		logger.warning("Push failed for rider %s: %s", rider.id, exc)
-	return send_dispatch_sms(rider.phone, job)
+		tasks.send_dispatch_alert_task.delay(rider.id, rider.phone, job.id, job.emergency_type)
+		return True
+	except Exception as exc:
+		logger.exception("Failed to enqueue dispatch alert for rider %s: %s", rider.id, exc)
+		# Fallback to synchronous send
+		try:
+			return send_push_notification(rider.user_id, "New dispatch", f"Emergency {job.emergency_type}")
+		except Exception:
+			return send_fallback_sms(rider.phone, f"BodaSOS dispatch #{job.id}")
 
 
 def send_expiry_alert(rider):
@@ -38,5 +43,9 @@ def trigger_mpesa_payout(batch):
 
 
 def send_sos_confirmation(job):
-	rider_name = job.assigned_rider.full_name if job.assigned_rider else "our rider"
-	return sms_send_sos_confirmation(job.patient.phone, rider_name, 15)
+	try:
+		tasks.send_sos_confirmation_task.delay(job.id)
+		return True
+	except Exception:
+		rider_name = job.assigned_rider.full_name if job.assigned_rider else "our rider"
+		return send_fallback_sms(job.patient.phone, f"Rider {rider_name} is on the way.")
