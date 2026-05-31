@@ -54,6 +54,18 @@ def _role_label(role: str) -> str:
     }.get(role, "Public Caller")
 
 
+def _require_authenticated_role(request, *, allow_admin: bool = True, allow_chairman: bool = False, allow_rider: bool = False) -> bool:
+    if not request.user.is_authenticated:
+        return False
+    if allow_admin and request.user.is_superuser:
+        return True
+    if allow_chairman and hasattr(request.user, "chairman_sacco"):
+        return True
+    if allow_rider and hasattr(request.user, "rider_profile"):
+        return True
+    return False
+
+
 def _base_public_context():
     return {
         "role_label": "Public Caller",
@@ -288,9 +300,9 @@ def sacco_dashboard(request, slug: str):
 
 @require_http_methods(["GET"])
 def rider_list(request):
-    if not request.user.is_authenticated:
-        return redirect(f"{reverse('login')}?next={request.path}")
-    if not (request.user.is_superuser or hasattr(request.user, "chairman_sacco") or hasattr(request.user, "rider_profile")):
+    if not _require_authenticated_role(request, allow_admin=True, allow_chairman=True):
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={request.path}")
         return HttpResponse("You do not have permission to view this rider list.", status=403)
     riders = Rider.objects.select_related("sacco").all()
     return render(request, "dispatch/rider_list.html", {"riders": riders})
