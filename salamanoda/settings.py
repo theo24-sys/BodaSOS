@@ -2,11 +2,13 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = "django-insecure-change-me-in-production"
 DEBUG = True
-ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1", ".onrender.com", "*"]
+ALLOWED_HOSTS: list[str] = [".onrender.com", "localhost", "127.0.0.1"]
 
 POSTGIS_ENABLED = os.getenv("POSTGIS_ENABLED", "false").lower() == "true"
 AFRICASTALKING_USERNAME = os.getenv("AFRICASTALKING_USERNAME", "")
@@ -96,7 +98,8 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Africa/Nairobi"
 USE_I18N = True
 USE_TZ = True
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
