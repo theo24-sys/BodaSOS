@@ -462,7 +462,13 @@
           </div>
         </div>
         <div class="inline-actions">
-          <span class="status-pill"><span class="status-dot"></span>System online</span>
+          <span class="status-pill"><span class="status-dot"></span>{% if request.user.is_authenticated %}{{ request.user.get_username }}{% else %}Public caller{% endif %}</span>
+          {% if request.user.is_authenticated %}
+            <a class="button secondary" href="{% url 'portal' %}">Portal</a>
+            <a class="button secondary" href="{% url 'logout' %}">Logout</a>
+          {% else %}
+            <a class="button secondary" href="{% url 'login' %}">Staff login</a>
+          {% endif %}
           <button type="button" class="install-button" id="install-app-btn" hidden>Install app</button>
         </div>
       </header>

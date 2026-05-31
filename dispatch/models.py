@@ -11,6 +11,13 @@ class Sacco(models.Model):
     slug = models.SlugField(max_length=180, unique=True, blank=True)
     chairman_name = models.CharField(max_length=120)
     chairman_phone = models.CharField(max_length=32, blank=True)
+    chairman_user = models.OneToOneField(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="chairman_sacco",
+    )
     access_token = models.CharField(max_length=64, unique=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

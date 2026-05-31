@@ -1,0 +1,49 @@
+{% extends "dispatch/base.html" %}
+{% block title %}BodaSOS | Staff Login{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">Locked access</div>
+  <h1>Sign in to access rider, Sacco, or admin controls.</h1>
+  <p class="subhead">
+    Public callers stay on the emergency request screen. This login page is the lock screen for authenticated roles only.
+  </p>
+</section>
+
+<div class="dashboard-grid">
+  <div class="card col-6">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Sign in</h2>
+        <div class="panel-lead">Use your production account to enter the portal.</div>
+      </div>
+    </div>
+    <form method="post" class="stack-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="split-output">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <label for="id_username">Username</label>
+      {{ form.username }}
+      <label for="id_password">Password</label>
+      {{ form.password }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <input type="submit" value="Enter portal">
+    </form>
+  </div>
+
+  <div class="card col-6">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Role boundaries</h2>
+        <div class="panel-lead">Each login maps to one operational path.</div>
+      </div>
+    </div>
+    <div class="surface">
+      <p><strong>Public Caller:</strong> uses the public emergency form only.</p>
+      <p><strong>Authenticated Rider:</strong> manages a single rider profile and dispatch availability.</p>
+      <p><strong>Sacco Chairman:</strong> reviews riders only inside their Sacco boundary.</p>
+      <p><strong>System Admin:</strong> manages global operations through Django admin.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

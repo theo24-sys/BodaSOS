@@ -1,210 +1,42 @@
 {% extends "dispatch/base.html" %}
-{% load static %}
-{% block title %}BodaSOS | Dispatch MVP{% endblock %}
+{% block title %}BodaSOS | Public Emergency Entry{% endblock %}
 {% block content %}
 <section class="hero">
-  <div class="eyebrow">Mobile dispatch core</div>
-  <h1>Rapid-response routing for Kenya’s boda boda network.</h1>
+  <div class="eyebrow">Public caller lock screen</div>
+  <h1>Report an emergency without exposing the dispatch network.</h1>
   <p class="subhead">
-    The interface is organized for crisis work: emergency capture on the left, live map on the right, and management panels below. It stays readable on a phone at night and installs like an app from the browser.
+    This page is for the public caller only. It captures the emergency request and location, but it does not reveal riders, Sacco records, or admin data.
   </p>
-  <div class="stat-grid">
-    <div class="stat"><strong>{{ riders|length }}</strong><span>Active riders</span></div>
-    <div class="stat"><strong>{{ requests|length }}</strong><span>Live emergencies</span></div>
-    <div class="stat"><strong>{{ saccos|length }}</strong><span>Sacco clusters</span></div>
-    <div class="stat"><strong>Free</strong><span>OpenStreetMap routing</span></div>
-  </div>
   <div class="inline-actions">
-    <a class="button" href="{% url 'rider_onboard' %}">Start rider onboarding</a>
-    <a class="button secondary" href="{% url 'rider_verify_phone' %}">Verify rider phone</a>
-    <a class="button secondary mobile-only" href="#emergency-core">Open emergency core</a>
+    <a class="button secondary" href="{% url 'login' %}">Staff login</a>
+    <a class="button secondary" href="#emergency-core">Start request</a>
   </div>
 </section>
 
 <div class="dashboard-grid">
-  <div class="card col-5" id="emergency-core">
+  <div class="card col-12" id="emergency-core">
     <div class="panel-head">
       <div>
         <h2 class="panel-title">Broadcast emergency request</h2>
-        <div class="panel-lead">Capture the caller, type, and location in a few taps.</div>
+        <div class="panel-lead">Only caller details and incident coordinates are collected here.</div>
       </div>
       <button class="button secondary" type="button" id="use-location-btn">Auto-locate</button>
     </div>
     <form method="post" action="{% url 'emergency_request_create' %}" class="stack-form" id="emergency-form">
       {% csrf_token %}
       {{ emergency_form.as_p }}
-      <p class="hint">Use browser geolocation for the fastest response. The location can still be entered manually if GPS is unavailable.</p>
+      <p class="hint">Use browser geolocation for the fastest response. If GPS is blocked, enter the location manually.</p>
       <input type="submit" class="danger" value="Dispatch nearest rider">
     </form>
     <div class="split-output" id="location-output">Waiting for location data.</div>
   </div>
-
-  <div class="card col-4">
-    <div class="panel-head">
-      <div>
-        <h2 class="panel-title">Quick rider onboarding</h2>
-        <div class="panel-lead">Keep the intake focused for a mobile field workflow.</div>
-      </div>
-    </div>
-    <form method="post" action="{% url 'rider_create' %}" class="stack-form" enctype="multipart/form-data">
-      {% csrf_token %}
-      {{ rider_form.as_p }}
-      <input type="submit" value="Register responder">
-    </form>
-  </div>
-
-  <div class="card col-3">
-    <div class="panel-head">
-      <div>
-        <h2 class="panel-title">Sacco network</h2>
-        <div class="panel-lead">Cluster visibility for approved network chairs.</div>
-      </div>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Sacco</th>
-          <th>Chairman</th>
-          <th>Approval token</th>
-          <th>Riders</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for sacco in saccos %}
-          <tr>
-            <td>{{ sacco.name }}</td>
-            <td>{{ sacco.chairman_name }}</td>
-            <td><a href="{% url 'sacco_dashboard' sacco.slug %}?token={{ sacco.access_token }}">Open dashboard</a></td>
-            <td>{{ sacco.riders.count }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="4">No Saccos registered yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card col-12">
-    <div class="panel-head">
-      <div>
-        <h2 class="panel-title">Live incident and fleet map</h2>
-        <div class="panel-lead">OpenStreetMap and Leaflet show riders, requests, and the active scene at a glance.</div>
-      </div>
-      <span class="badge">Leaflet + OpenStreetMap</span>
-    </div>
-    <div id="dispatch-map" class="map-shell"></div>
-  </div>
-
-  <div class="card col-12">
-    <div class="panel-head">
-      <div>
-        <h2 class="panel-title">Available network responders</h2>
-        <div class="panel-lead">The dispatcher should only need this view when assigning a rider after authentication.</div>
-      </div>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Sacco</th>
-          <th>Coordinates</th>
-          <th>Status</th>
-          <th>Trust flags</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for rider in riders %}
-          <tr>
-            <td>{{ rider.full_name }}</td>
-            <td>{{ rider.phone_number }}</td>
-            <td>{{ rider.sacco_name|default:"-" }}</td>
-            <td>{{ rider.latitude }}, {{ rider.longitude }}</td>
-            <td><span class="badge success">{{ rider.status }}</span></td>
-            <td>{% if rider.is_verified %}Verified{% else %}Unverified{% endif %} · {% if rider.is_trained_first_aid %}First aid trained{% else %}Training pending{% endif %}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="6">No riders registered yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card col-12">
-    <div class="panel-head">
-      <div>
-        <h2 class="panel-title">Recent dispatch log</h2>
-        <div class="panel-lead">A short feed of recent requests keeps the operator oriented without forcing a page scroll marathon.</div>
-      </div>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Caller</th>
-          <th>Type</th>
-          <th>Coordinates</th>
-          <th>Status</th>
-          <th>Assigned rider</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for request in requests %}
-          <tr>
-            <td>{{ request.caller_name }}</td>
-            <td>{{ request.emergency_type }}</td>
-            <td>{{ request.latitude }}, {{ request.longitude }}</td>
-            <td><span class="badge danger">{{ request.status }}</span></td>
-            <td>{% if request.assigned_rider %}{{ request.assigned_rider.full_name }}{% else %}-{% endif %}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5">No emergency requests yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </div>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-{{ riders_json|json_script:"riders-data" }}
-{{ requests_json|json_script:"requests-data" }}
+
 <script>
-  const riders = JSON.parse(document.getElementById('riders-data').textContent);
-  const requests = JSON.parse(document.getElementById('requests-data').textContent);
-  const map = L.map('dispatch-map').setView([-1.286389, 36.817223], 12);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  riders.forEach((rider) => {
-    L.marker([rider.latitude, rider.longitude]).addTo(map)
-      .bindPopup(`<strong>${rider.full_name}</strong><br>${rider.phone_number}<br>${rider.status}`);
-  });
-
-  requests.forEach((request) => {
-    L.circleMarker([request.latitude, request.longitude], {
-      radius: 8,
-      color: '#ff4d4f',
-      fillColor: '#ff4d4f',
-      fillOpacity: 0.5,
-    }).addTo(map).bindPopup(`<strong>${request.caller_name}</strong><br>${request.emergency_type}<br>${request.status}`);
-  });
-
   const output = document.getElementById('location-output');
   const latField = document.getElementById('id_latitude');
   const lonField = document.getElementById('id_longitude');
   const useLocationBtn = document.getElementById('use-location-btn');
-
-  function setLocation(lat, lon) {
-    if (latField && lonField) {
-      latField.value = lat.toFixed(6);
-      lonField.value = lon.toFixed(6);
-    }
-    output.textContent = `Location captured: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    L.marker([lat, lon], { title: 'Patient location' }).addTo(map).bindPopup('Patient location');
-    map.setView([lat, lon], 15);
-  }
 
   function requestLocation() {
     if (!navigator.geolocation) {
@@ -213,7 +45,13 @@
     }
     output.textContent = 'Requesting GPS lock...';
     navigator.geolocation.getCurrentPosition(
-      (position) => setLocation(position.coords.latitude, position.coords.longitude),
+      (position) => {
+        if (latField && lonField) {
+          latField.value = position.coords.latitude.toFixed(6);
+          lonField.value = position.coords.longitude.toFixed(6);
+        }
+        output.textContent = `Location captured: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+      },
       () => {
         output.textContent = 'Location request failed. Enter coordinates manually or try again.';
       },

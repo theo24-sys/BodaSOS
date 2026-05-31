@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
+import logging
+
 from django.contrib import messages
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.templatetags.static import static
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
@@ -24,81 +30,101 @@ from .models import EmergencyRequest, Rider, Sacco
 from .services import assign_nearest_rider, find_nearest_rider
 
 
-def _home_context():
-    riders = Rider.objects.select_related("sacco").all()[:10]
-    requests = EmergencyRequest.objects.select_related("assigned_rider", "assigned_rider__sacco")[:10]
-    saccos = Sacco.objects.all()[:10]
+logger = logging.getLogger(__name__)
+
+
+def _user_role(user) -> str:
+    if not user.is_authenticated:
+        return "caller"
+    if user.is_superuser:
+        return "admin"
+    if hasattr(user, "chairman_sacco"):
+        return "chairman"
+    if hasattr(user, "rider_profile"):
+        return "rider"
+    return "caller"
+
+
+def _role_label(role: str) -> str:
     return {
-        "rider_form": RiderForm(),
-        "sacco_form": SaccoForm(),
-        "emergency_form": EmergencyRequestForm(),
-        "verification_form": RiderVerificationForm(),
-        "riders": riders,
-        "requests": requests,
-        "saccos": saccos,
-        "riders_json": [
-            {
-                "id": rider.id,
-                "full_name": rider.full_name,
-                "phone_number": rider.phone_number,
-                "sacco_name": rider.sacco_name,
-                "latitude": float(rider.latitude),
-                "longitude": float(rider.longitude),
-                "status": rider.status,
-                "is_verified": rider.is_verified,
-                "is_phone_verified": rider.is_phone_verified,
-                "is_dispatch_ready": rider.is_dispatch_ready,
-            }
-            for rider in riders
-        ],
-        "requests_json": [
-            {
-                "id": request.id,
-                "caller_name": request.caller_name,
-                "emergency_type": request.emergency_type,
-                "latitude": float(request.latitude),
-                "longitude": float(request.longitude),
-                "status": request.status,
-                "assigned_rider": request.assigned_rider.full_name if request.assigned_rider else None,
-            }
-            for request in requests
+        "admin": "System Admin",
+        "chairman": "Sacco Chairman",
+        "rider": "Authenticated Rider",
+        "caller": "Public Caller",
+    }.get(role, "Public Caller")
+
+
+def _base_public_context():
+    return {
+        "role_label": "Public Caller",
+        "is_public_view": True,
+    }
+
+
+def _portal_context(request):
+    role = _user_role(request.user)
+    rider = getattr(request.user, "rider_profile", None)
+    sacco = getattr(request.user, "chairman_sacco", None)
+    return {
+        "current_role": role,
+        "role_label": _role_label(role),
+        "rider_profile": rider,
+        "chairman_sacco": sacco,
+        "portal_actions": [
+            {"label": "Open emergency console", "href": reverse("home"), "tone": "primary"},
+            {"label": "Rider registry", "href": reverse("rider_list"), "tone": "secondary"},
         ],
     }
 
 
+def _home_context():
+    return {
+        "rider_form": RiderForm(),
+        "emergency_form": EmergencyRequestForm(),
+        "verification_form": RiderVerificationForm(),
+    }
+
+
 def home(request):
-    return render(request, "dispatch/home.html", _home_context())
+    if request.user.is_authenticated:
+        return redirect("portal")
+    return render(request, "dispatch/home.html", _home_context() | _base_public_context())
+
+
+@login_required
+def portal(request):
+    return render(request, "dispatch/portal.html", _portal_context(request))
 
 
 @never_cache
 def web_manifest(request):
-        return JsonResponse(
+    return JsonResponse(
+        {
+            "name": "BodaSOS",
+            "short_name": "BodaSOS",
+            "description": "Mobile-first emergency dispatch for Kenyan boda boda networks.",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#121212",
+            "theme_color": "#FF6B00",
+            "icons": [
                 {
-                        "name": "BodaSOS",
-                        "short_name": "BodaSOS",
-                        "description": "Mobile-first emergency dispatch for Kenyan boda boda networks.",
-                        "start_url": "/",
-                        "scope": "/",
-                        "display": "standalone",
-                        "background_color": "#121212",
-                        "theme_color": "#FF6B00",
-                        "icons": [
-                                {
-                                        "src": static("dispatch/bodasos-icon.png"),
-                                        "sizes": "1024x1024",
-                                        "type": "image/png",
-                                        "purpose": "any maskable",
-                                }
-                        ],
+                    "src": static("dispatch/bodasos-icon.png"),
+                    "sizes": "1024x1024",
+                    "type": "image/png",
+                    "purpose": "any maskable",
                 }
-        )
+            ],
+        }
+    )
 
 
 @never_cache
 def service_worker(request):
-        script = """
+    script = """
 const CACHE_NAME = 'bodasos-shell-v1';
-const CORE_ASSETS = ['/', '/riders/', '/manifest.webmanifest'];
+const CORE_ASSETS = ['/', '/login/', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -127,7 +153,7 @@ self.addEventListener('fetch', (event) => {
     );
 });
 """
-        return HttpResponse(script, content_type="application/javascript")
+    return HttpResponse(script, content_type="application/javascript")
 
 
 @require_http_methods(["GET", "POST"])
@@ -146,6 +172,8 @@ def rider_create(request):
             rider.is_phone_verified = False
             rider.is_verified = False
             rider.save()
+            rider_group, _ = Group.objects.get_or_create(name="rider")
+            user.groups.add(rider_group)
             send_rider_verification_sms(rider.phone_number)
             messages.success(request, f"Verification code sent to {rider.phone_number}. Complete the phone check to continue.")
             return redirect("rider_verify_phone")
@@ -193,6 +221,10 @@ def emergency_request_create(request):
 @require_http_methods(["GET", "POST"])
 def rider_mobile_dashboard(request, rider_id: int):
     rider = get_object_or_404(Rider.objects.select_related("sacco"), pk=rider_id)
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={request.path}")
+    if not (request.user.is_superuser or getattr(request.user, "rider_profile", None) == rider):
+        return HttpResponse("You do not have permission to view this rider dashboard.", status=403)
     if request.method == "POST":
         latitude = request.POST.get("latitude")
         longitude = request.POST.get("longitude")
@@ -212,6 +244,10 @@ def rider_mobile_dashboard(request, rider_id: int):
 @require_http_methods(["GET", "POST"])
 def sacco_dashboard(request, slug: str):
     sacco = get_object_or_404(Sacco, slug=slug)
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={request.path}")
+    if not (request.user.is_superuser or hasattr(request.user, "chairman_sacco") and request.user.chairman_sacco == sacco):
+        return HttpResponse("You do not have permission to view this sacco dashboard.", status=403)
     token = request.GET.get("token", "")
     if token != sacco.access_token:
         return HttpResponse("Invalid sacco dashboard token.", status=403)
@@ -246,6 +282,10 @@ def sacco_dashboard(request, slug: str):
 
 @require_http_methods(["GET"])
 def rider_list(request):
+    if not request.user.is_authenticated:
+        return redirect(f"{reverse('login')}?next={request.path}")
+    if not (request.user.is_superuser or hasattr(request.user, "chairman_sacco") or hasattr(request.user, "rider_profile")):
+        return HttpResponse("You do not have permission to view this rider list.", status=403)
     riders = Rider.objects.select_related("sacco").all()
     return render(request, "dispatch/rider_list.html", {"riders": riders})
 
@@ -273,6 +313,8 @@ def nearest_dispatch_api(request):
 @api_view(["GET", "POST"])
 def rider_api_list_create(request):
     if request.method == "GET":
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=403)
         riders = Rider.objects.select_related("sacco").all().order_by("-last_seen_at", "full_name")
         return Response(RiderSerializer(riders, many=True).data)
 
@@ -285,6 +327,8 @@ def rider_api_list_create(request):
 @api_view(["GET", "POST"])
 def emergency_api_list_create(request):
     if request.method == "GET":
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=403)
         emergencies = EmergencyRequest.objects.select_related("assigned_rider", "assigned_rider__sacco").all()
         return Response(EmergencyRequestSerializer(emergencies, many=True).data)
 

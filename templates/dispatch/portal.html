@@ -1,0 +1,56 @@
+{% extends "dispatch/base.html" %}
+{% block title %}BodaSOS | Portal{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">Authenticated portal</div>
+  <h1>{{ role_label }}</h1>
+  <p class="subhead">
+    This is the role-gated control surface. Public callers cannot see this page, and each role only sees the actions it is supposed to handle.
+  </p>
+  <div class="stat-grid">
+    <div class="stat"><strong>{{ current_role }}</strong><span>Active role</span></div>
+    <div class="stat"><strong>{% if rider_profile %}Yes{% else %}No{% endif %}</strong><span>Rider profile</span></div>
+    <div class="stat"><strong>{% if chairman_sacco %}Yes{% else %}No{% endif %}</strong><span>Chairman sacco</span></div>
+    <div class="stat"><strong>{% if request.user.is_superuser %}Yes{% else %}No{% endif %}</strong><span>System admin</span></div>
+  </div>
+</section>
+
+<div class="dashboard-grid">
+  <div class="card col-6">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Access boundary</h2>
+        <div class="panel-lead">The portal exposes only the current role's operational path.</div>
+      </div>
+    </div>
+    <div class="surface">
+      <p><strong>Username:</strong> {{ request.user.get_username }}</p>
+      <p><strong>Role:</strong> {{ role_label }}</p>
+      <p><strong>Permission note:</strong> Public data stays out of this page. Callers stay on the emergency form, riders stay on their own dashboard, and chairmen stay in their Sacco boundary.</p>
+    </div>
+  </div>
+
+  <div class="card col-6">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Available actions</h2>
+        <div class="panel-lead">Role-aware shortcuts for the active session.</div>
+      </div>
+    </div>
+    <div class="inline-actions">
+      {% for action in portal_actions %}
+        <a class="button {% if action.tone == 'secondary' %}secondary{% endif %}" href="{{ action.href }}">{{ action.label }}</a>
+      {% endfor %}
+      {% if rider_profile %}
+        <a class="button" href="{% url 'rider_mobile_dashboard' rider_profile.id %}">Open rider dashboard</a>
+      {% endif %}
+      {% if chairman_sacco %}
+        <a class="button" href="{% url 'sacco_dashboard' chairman_sacco.slug %}?token={{ chairman_sacco.access_token }}">Open Sacco dashboard</a>
+      {% endif %}
+      {% if request.user.is_superuser %}
+        <a class="button" href="/admin/">Open Django admin</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
