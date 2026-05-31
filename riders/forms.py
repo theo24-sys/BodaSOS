@@ -1,12 +1,6 @@
 from django import forms
 
-from .models import EmergencyRequest, RiderProfile, Sacco
-
-
-class SaccoForm(forms.ModelForm):
-    class Meta:
-        model = Sacco
-        fields = ["name", "chairman_name", "chairman_phone"]
+from dispatch.models import RiderProfile
 
 
 class RiderOnboardingForm(forms.ModelForm):
@@ -30,19 +24,6 @@ class RiderOnboardingForm(forms.ModelForm):
 class RiderVerificationForm(forms.Form):
     phone_number = forms.CharField(max_length=32)
     code = forms.CharField(max_length=4)
-
-
-class EmergencyRequestForm(forms.ModelForm):
-    class Meta:
-        model = EmergencyRequest
-        fields = [
-            "caller_name",
-            "caller_phone",
-            "emergency_type",
-            "latitude",
-            "longitude",
-            "notes",
-        ]
 
 
 RiderForm = RiderOnboardingForm

@@ -1,0 +1,9 @@
+{
+  "name": "BodaSOS",
+  "short_name": "BodaSOS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff6b00"
+}
