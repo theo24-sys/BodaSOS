@@ -1,137 +1,65 @@
-from __future__ import annotations
+from django.contrib.gis.db.models.functions import Distance
+from django.core.cache import cache
+from django.utils import timezone
 
-import math
-from dataclasses import dataclass
-from typing import Iterable
-
-from django.conf import settings
-from django.db import transaction
-from django.db import connection
-
-from .models import EmergencyRequest, RiderProfile
+from .models import DispatchAttempt
+from riders.models import Rider
+from notifications.services import send_dispatch_alert
 
 
-@dataclass(frozen=True)
-class DispatchCandidate:
-    rider: RiderProfile
-    distance_km: float
-
-
-def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    radius_km = 6371.0
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
-
-    a = (
-        math.sin(delta_phi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
-    )
-    return 2 * radius_km * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
-def _dispatch_ready_queryset(riders: Iterable[RiderProfile] | None = None):
-    queryset = riders if riders is not None else RiderProfile.objects.all()
-    if hasattr(queryset, "filter"):
-        return queryset.filter(
-            status=RiderProfile.DispatchStatus.ACTIVE,
-            is_phone_verified=True,
-            is_verified=True,
-            sacco_approval_status=RiderProfile.SaccoApprovalStatus.APPROVED,
-        )
-    return [
-        rider
-        for rider in queryset
-        if rider.status == RiderProfile.DispatchStatus.ACTIVE
-        and rider.is_phone_verified
-        and rider.is_verified
-        and rider.sacco_approval_status == RiderProfile.SaccoApprovalStatus.APPROVED
-    ]
-
-
-def _find_nearest_rider_python(latitude: float, longitude: float, riders: Iterable[RiderProfile]) -> DispatchCandidate | None:
-    active_riders = list(riders)
-    if not active_riders:
-        return None
-
-    closest_rider = min(
-        active_riders,
-        key=lambda rider: haversine_distance_km(
-            latitude,
-            longitude,
-            float(rider.latitude),
-            float(rider.longitude),
-        ),
-    )
-    distance_km = haversine_distance_km(
-        latitude,
-        longitude,
-        float(closest_rider.latitude),
-        float(closest_rider.longitude),
-    )
-    return DispatchCandidate(rider=closest_rider, distance_km=distance_km)
-
-
-def _find_nearest_rider_postgis(latitude: float, longitude: float) -> DispatchCandidate | None:
-    table_name = RiderProfile._meta.db_table
-    sql = f"""
-        SELECT id,
-               ST_Distance(
-                   ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
-                   ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-               ) AS distance_m
-        FROM {table_name}
-        WHERE status = %s
-          AND is_phone_verified = TRUE
-          AND is_verified = TRUE
-          AND sacco_approval_status = %s
-        ORDER BY distance_m ASC
-        LIMIT 1
+def get_nearest_rider(location, exclude_rider_ids=[]):
     """
-    with connection.cursor() as cursor:
-        cursor.execute(
-            sql,
-            [
-                longitude,
-                latitude,
-                RiderProfile.DispatchStatus.ACTIVE,
-                RiderProfile.SaccoApprovalStatus.APPROVED,
-            ],
-        )
-        row = cursor.fetchone()
+    Executes a high-efficiency PostGIS Nearest Neighbor computation using
+    the spatial GiST index bounding boxes.
+    """
+    return Rider.objects.filter(
+        duty_status='ACTIVE'
+    ).exclude(
+        id__in=exclude_rider_ids
+    ).annotate(
+        distance=Distance('current_location', location)
+    ).order_by('distance').first()
 
-    if row is None:
+
+def trigger_dispatch(job):
+    exclusions = list(DispatchAttempt.objects.filter(job=job).values_list('rider_id', flat=True))
+    rider = get_nearest_rider(job.patient_location, exclude_rider_ids=exclusions)
+
+    if not rider:
+        job.status = 'CANCELLED'
+        job.save()
         return None
 
-    rider = RiderProfile.objects.get(pk=row[0])
-    return DispatchCandidate(rider=rider, distance_km=float(row[1]) / 1000.0)
+    attempt = DispatchAttempt.objects.create(
+        job=job,
+        rider=rider,
+        attempt_number=len(exclusions) + 1
+    )
+
+    send_dispatch_alert(rider, job)
+
+    # Track transient states strictly inside serverless caching layer
+    cache.set(f"dispatch:{job.id}", rider.id, timeout=45)
+    return attempt
 
 
-def find_nearest_rider(
-    latitude: float,
-    longitude: float,
-    riders: Iterable[RiderProfile] | None = None,
-) -> DispatchCandidate | None:
-    if riders is None and getattr(settings, "POSTGIS_ENABLED", False) and connection.vendor == "postgresql":
-        candidate = _find_nearest_rider_postgis(latitude, longitude)
-        if candidate is not None:
-            return candidate
+def handle_dispatch_timeout(job_id):
+    from riders.services import mark_dispatch_missed
+    from patients.models import Job
 
-    queryset = _dispatch_ready_queryset(riders)
-    return _find_nearest_rider_python(latitude, longitude, queryset)
+    rider_id = cache.get(f"dispatch:{job_id}")
+    if rider_id:
+        cache.delete(f"dispatch:{job_id}")
+        job = Job.objects.get(id=job_id)
 
+        DispatchAttempt.objects.filter(job=job, rider_id=rider_id, status='SENT').update(
+            status='MISSED', responded_at=timezone.now()
+        )
+        mark_dispatch_missed(rider_id, job_id)
 
-@transaction.atomic
-def assign_nearest_rider(request: EmergencyRequest) -> EmergencyRequest:
-    candidate = find_nearest_rider(float(request.latitude), float(request.longitude))
-    if candidate is None:
-        request.status = EmergencyRequest.Status.NO_RIDER_FOUND
-        request.assigned_rider = None
-        request.save(update_fields=["status", "assigned_rider", "updated_at"])
-        return request
-
-    request.status = EmergencyRequest.Status.ASSIGNED
-    request.assigned_rider = candidate.rider
-    request.save(update_fields=["status", "assigned_rider", "updated_at"])
-    return request
+        attempts = DispatchAttempt.objects.filter(job=job).count()
+        if attempts >= 5:
+            job.status = 'CANCELLED'
+            job.save()
+        else:
+            trigger_dispatch(job)

@@ -1,6 +1,10 @@
-import os
-
 from .base import *  # noqa: F401,F403
 
 DEBUG = False
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", ".onrender.com").split(",") if host.strip()]
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
+ALLOWED_HOSTS = config("ALLOWED_HOSTS").split(",")

@@ -1,9 +1,11 @@
 import secrets
 
-from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from django.db import models
+from django.conf import settings
 from django.utils.text import slugify
+
+from core.models import TimeStampedModel
 
 
 class Sacco(models.Model):
@@ -12,7 +14,7 @@ class Sacco(models.Model):
     chairman_name = models.CharField(max_length=120)
     chairman_phone = models.CharField(max_length=32, blank=True)
     chairman_user = models.OneToOneField(
-        User,
+        settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -52,7 +54,7 @@ class RiderProfile(models.Model):
         message="NTSA license number must be a valid alphanumeric code.",
     )
 
-    user = models.OneToOneField(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="rider_profile")
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="legacy_rider_profile")
     full_name = models.CharField(max_length=120)
     phone_number = models.CharField(max_length=32, unique=True)
     national_id = models.CharField(max_length=8, unique=True, validators=[national_id_validator])
@@ -158,3 +160,19 @@ class EmergencyRequest(models.Model):
 
 
 Rider = RiderProfile
+
+
+class DispatchAttempt(TimeStampedModel):
+    class Status(models.TextChoices):
+        SENT = "sent", "Sent"
+        ACCEPTED = "accepted", "Accepted"
+        MISSED = "missed", "Missed"
+        DECLINED = "declined", "Declined"
+
+    job = models.ForeignKey("patients.Job", on_delete=models.CASCADE, related_name="dispatch_attempts")
+    rider = models.ForeignKey("riders.Rider", on_delete=models.CASCADE, related_name="dispatch_attempts")
+    attempt_number = models.IntegerField(default=1)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.SENT)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    timeout_seconds = models.IntegerField(default=45)

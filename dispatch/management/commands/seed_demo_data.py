@@ -1,105 +1,73 @@
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
+from datetime import date, timedelta
 
-from dispatch.models import EmergencyRequest, Rider, Sacco
-from dispatch.services import assign_nearest_rider
+from django.contrib.gis.geos import Point
+from django.core.management.base import BaseCommand
+
+from accounts.models import User
+from dispatch.models import DispatchAttempt
+from dispatch.services import trigger_dispatch
+from patients.models import Job, Patient
+from riders.models import Rider
+from saccos.models import Sacco
 
 
 class Command(BaseCommand):
-    help = "Seed demo Saccos, riders, and emergency requests for BodaSOS."
+    help = "Seed demo data for BodaSOS."
 
     def handle(self, *args, **options):
-        sacco_specs = [
-            ("Ruiru Central Boda Sacco", "Grace Wanjiku", "0711000001"),
-            ("Machakos Rapid Riders", "James Mutiso", "0711000002"),
+        demo_saccos = [
+            Sacco.objects.create(name="Nairobi CBD Sacco", registration_number="SACCO-001", county="Nairobi", sub_county="CBD"),
+            Sacco.objects.create(name="Westlands Riders Sacco", registration_number="SACCO-002", county="Nairobi", sub_county="Westlands"),
         ]
-
-        created_saccos = []
-        for name, chairman_name, chairman_phone in sacco_specs:
-            sacco, _ = Sacco.objects.get_or_create(
-                name=name,
-                defaults={
-                    "chairman_name": chairman_name,
-                    "chairman_phone": chairman_phone,
-                },
-            )
-            created_saccos.append(sacco)
-
-        rider_specs = [
-            {
-                "full_name": "Amina Njoki",
-                "phone_number": "0701000001",
-                "national_id": "12345678",
-                "ntsa_license_number": "DL/10001",
-                "sacco": created_saccos[0],
-                "latitude": -1.286389,
-                "longitude": 36.817223,
-            },
-            {
-                "full_name": "Peter Wekesa",
-                "phone_number": "0701000002",
-                "national_id": "87654321",
-                "ntsa_license_number": "DL/10002",
-                "sacco": created_saccos[0],
-                "latitude": -1.272000,
-                "longitude": 36.821000,
-            },
-            {
-                "full_name": "Faith Muthoni",
-                "phone_number": "0701000003",
-                "national_id": "11223344",
-                "ntsa_license_number": "DL/10003",
-                "sacco": created_saccos[1],
-                "latitude": -1.525000,
-                "longitude": 37.268300,
-            },
-        ]
+        sacco_admins = []
+        for index, sacco in enumerate(demo_saccos, start=1):
+            admin = User.objects.create_user(phone_number=f"071000000{index}", password="Admin12345!", role=User.Roles.SACCO_ADMIN, sacco=sacco, is_verified=True)
+            admin.first_name = sacco.name.split()[0]
+            admin.save(update_fields=["first_name"])
+            sacco_admins.append(admin)
 
         riders = []
-        for rider_spec in rider_specs:
-            user, _ = User.objects.get_or_create(username=rider_spec["phone_number"])
-            user.first_name = rider_spec["full_name"].split(" ")[0]
-            user.last_name = " ".join(rider_spec["full_name"].split(" ")[1:])
-            user.set_unusable_password()
-            user.save()
-            rider, _ = Rider.objects.get_or_create(
-                phone_number=rider_spec["phone_number"],
-                defaults={
-                    **rider_spec,
-                    "user": user,
-                    "status": Rider.DispatchStatus.ACTIVE,
-                    "is_phone_verified": True,
-                    "is_verified": True,
-                    "sacco_approval_status": Rider.SaccoApprovalStatus.APPROVED,
-                    "is_trained_first_aid": True,
-                },
+        for index in range(10):
+            sacco = demo_saccos[index % 2]
+            user = User.objects.create_user(phone_number=f"07030000{index:02d}", password="Rider12345!", role=User.Roles.RIDER, sacco=sacco, is_verified=True)
+            rider = Rider.objects.create(
+                user=user,
+                sacco=sacco,
+                full_name=f"Demo Rider {index + 1}",
+                id_number=f"200000{index:02d}",
+                license_number=f"LIC-DEMO-{index + 1}",
+                license_class="F" if index % 2 == 0 else "G",
+                phone=user.phone_number,
+                ntsa_verified=True,
+                coc_verified=True,
+                first_aid_certified=True,
+                first_aid_expiry=date.today() + timedelta(days=60 - index),
+                duty_status=Rider.DutyStatus.ACTIVE,
+                current_location=Point(36.8 + index * 0.01, -1.29 + index * 0.01, srid=4326),
             )
-            if not rider.user_id:
-                rider.user = user
-                rider.save(update_fields=["user"])
             riders.append(rider)
 
-        request_specs = [
-            {
-                "caller_name": "Demo Patient 1",
-                "caller_phone": "0702000001",
-                "emergency_type": EmergencyRequest.EmergencyType.TRAUMA,
-                "latitude": -1.284000,
-                "longitude": 36.819000,
-                "notes": "Demo crash near the market",
-            },
-            {
-                "caller_name": "Demo Patient 2",
-                "caller_phone": "0702000002",
-                "emergency_type": EmergencyRequest.EmergencyType.MATERNAL,
-                "latitude": -1.526000,
-                "longitude": 37.267000,
-                "notes": "Demo maternal emergency",
-            },
-        ]
+        completed_jobs = []
+        for index in range(3):
+            patient = Patient.objects.create(phone=f"07050000{index}")
+            job = Job.objects.create(patient=patient, emergency_type=Job.EmergencyType.ACCIDENT, patient_location=Point(36.82 + index * 0.01, -1.29 + index * 0.01, srid=4326))
+            attempt = trigger_dispatch(job)
+            if attempt:
+                attempt.status = DispatchAttempt.Status.ACCEPTED
+                attempt.save(update_fields=["status"])
+                job.status = Job.Status.DELIVERED
+                job.save(update_fields=["status", "updated_at"])
+            completed_jobs.append(job)
 
-        for request_spec in request_specs:
-            request = EmergencyRequest.objects.create(**request_spec)
-            assign_nearest_rider(request)
+        pending_patient = Patient.objects.create(phone="0705000099")
+        pending_job = Job.objects.create(patient=pending_patient, emergency_type=Job.EmergencyType.CARDIAC, patient_location=Point(36.8219, -1.2921, srid=4326))
+        trigger_dispatch(pending_job)
 
-        self.stdout.write(self.style.SUCCESS(f"Seeded {len(created_saccos)} saccos, {len(riders)} riders, and {len(request_specs)} emergency requests."))
+        self.stdout.write(self.style.SUCCESS("Seeded demo data:"))
+        self.stdout.write(f"Saccos: {', '.join(s.name for s in demo_saccos)}")
+        self.stdout.write(f"Sacco admins: {', '.join(admin.phone_number for admin in sacco_admins)}")
+        self.stdout.write(f"Riders created: {len(riders)}")
+        self.stdout.write(f"Completed jobs: {len(completed_jobs)}")
+        self.stdout.write(f"Pending job: {pending_job.id} status={pending_job.status}")
+        for admin in sacco_admins:
+            self.stdout.write(f"Login {admin.phone_number} / Admin12345!")
