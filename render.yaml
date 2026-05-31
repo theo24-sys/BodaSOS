@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: bodasos
+    env: python
+    buildCommand: ./build.sh
+    startCommand: gunicorn salamanoda.wsgi:application
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: POSTGIS_ENABLED
+        value: "true"
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "false"
+      - key: AFRICASTALKING_USERNAME
+        sync: false
+      - key: AFRICASTALKING_API_KEY
+        sync: false
+      - key: AFRICASTALKING_SENDER_ID
+        sync: false
+      - key: REDIS_URL
+        sync: false

@@ -1,0 +1,66 @@
+{% extends "dispatch/base.html" %}
+{% block title %}Sacco Dashboard | BodaSOS{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">Sacco approval board</div>
+  <h1>{{ sacco.name }}</h1>
+  <p class="subhead">Chairman approval view for rider onboarding. Use the access token to open the demo dashboard.</p>
+</section>
+
+<div class="grid">
+  <div class="card col-6">
+    <h2 class="panel-title">Pending riders</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rider in pending_riders %}
+          <tr>
+            <td>{{ rider.full_name }}</td>
+            <td>{{ rider.phone_number }}</td>
+            <td>
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="rider_id" value="{{ rider.id }}">
+                <button name="action" value="approve" type="submit">Approve</button>
+                <button name="action" value="reject" type="submit" class="button secondary">Reject</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">No riders waiting for approval.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card col-6">
+    <h2 class="panel-title">Approved riders</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rider in approved_riders %}
+          <tr>
+            <td>{{ rider.full_name }}</td>
+            <td>{{ rider.phone_number }}</td>
+            <td>{{ rider.status }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">No approved riders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

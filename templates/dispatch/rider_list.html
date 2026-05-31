@@ -1,0 +1,40 @@
+{% extends "dispatch/base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">Rider registry</div>
+  <h1>Registered riders</h1>
+  <p class="subhead">A basic operational view for the pilot team and county partners.</p>
+  <div>
+    <a class="button secondary" href="{% url 'home' %}">Back to dispatch console</a>
+    <a class="button" href="{% url 'rider_create' %}">Register rider</a>
+  </div>
+</section>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Sacco</th>
+        <th>Status</th>
+        <th>Approval</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rider in riders %}
+        <tr>
+          <td>{{ rider.full_name }}</td>
+          <td>{{ rider.phone_number }}</td>
+          <td>{{ rider.sacco_name|default:"-" }}</td>
+          <td>{{ rider.status }}</td>
+          <td>{% if rider.is_phone_verified %}Phone verified{% else %}Awaiting SMS code{% endif %} · {{ rider.sacco_approval_status }}</td>
+          <td>{{ rider.latitude }}, {{ rider.longitude }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">No riders found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
