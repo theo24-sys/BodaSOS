@@ -25,6 +25,7 @@ ENV DJANGO_SETTINGS_MODULE=config.settings.production
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV SECRET_KEY=build-time-placeholder-secret-key-not-real
 ENV REDIS_URL=redis://localhost:6379
+ENV ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Force Render to generate the production migration files during image compilation
 RUN python manage.py makemigrations core accounts saccos riders patients dispatch notifications reports --noinput
