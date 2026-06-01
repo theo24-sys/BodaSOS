@@ -41,3 +41,8 @@ Notes
 
 - The project still falls back to SQLite locally when `DATABASE_URL` is not set.
 - If you later add Channels/WebSockets, you can switch the start command to an ASGI entrypoint, but the current project runs fine with the WSGI start command above.
+
+GDAL compatibility note
+----------------------
+
+Render's build images include a system `libgdal` package. To avoid pip build failures the Python `GDAL` package version in `requirements.txt` must match the system `libgdal` minor version. Currently Render's build image provides `libgdal` 3.6.x — pin `GDAL==3.6.2` in `requirements.txt` to ensure compatibility.
