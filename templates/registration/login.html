@@ -2,32 +2,49 @@
 {% block title %}BodaSOS | Staff Login{% endblock %}
 {% block content %}
 <section class="hero">
-  <div class="eyebrow">Locked access</div>
-  <h1>Sign in to access rider, Sacco, or admin controls.</h1>
+  <div class="eyebrow">Staff portal</div>
+  <h1>Sign in with your operational account.</h1>
   <p class="subhead">
-    Public callers stay on the emergency request screen. This login page is the lock screen for authenticated roles only.
+    Access is restricted to verified riders, Sacco chairs, and system administrators. Reporting an emergency is always available through the public intake form.
   </p>
 </section>
 
 <div class="dashboard-grid">
-  <div class="card col-6">
+  <div class="card col-6 auth-card">
     <div class="panel-head">
       <div>
         <h2 class="panel-title">Sign in</h2>
-        <div class="panel-lead">Use your production account to enter the portal.</div>
+        <div class="panel-lead">Clean access for verified operators only.</div>
       </div>
     </div>
-    <form method="post" class="stack-form">
+
+    <form method="post" class="stack-form" id="login-form">
       {% csrf_token %}
       {% if form.non_field_errors %}
-        <div class="split-output">{{ form.non_field_errors }}</div>
+        <div class="split-output error-box">{{ form.non_field_errors }}</div>
       {% endif %}
-      <label for="id_username">Username</label>
-      {{ form.username }}
-      <label for="id_password">Password</label>
-      {{ form.password }}
+
+      <div class="field-group">
+        <label for="id_username">Username</label>
+        {{ form.username }}
+        {{ form.username.errors }}
+      </div>
+
+      <div class="field-group password-field">
+        <label for="id_password">Password</label>
+        <div class="password-wrapper">
+          {{ form.password }}
+          <button type="button" class="icon-button" id="toggle-password" aria-label="Show or hide password">👁️</button>
+        </div>
+        {{ form.password.errors }}
+      </div>
+
       <input type="hidden" name="next" value="{{ next }}">
-      <input type="submit" value="Enter portal">
+
+      <div class="inline-actions">
+        <input type="submit" class="button" value="Enter portal">
+        <a class="button secondary" href="{% url 'home' %}">Back to emergency form</a>
+      </div>
     </form>
   </div>
 
@@ -35,15 +52,81 @@
     <div class="panel-head">
       <div>
         <h2 class="panel-title">Role boundaries</h2>
-        <div class="panel-lead">Each login maps to one operational path.</div>
+        <div class="panel-lead">Pick the account type that matches your operational access.</div>
       </div>
     </div>
-    <div class="surface">
-      <p><strong>Public Caller:</strong> uses the public emergency form only.</p>
-      <p><strong>Authenticated Rider:</strong> manages a single rider profile and dispatch availability.</p>
-      <p><strong>Sacco Chairman:</strong> reviews riders only inside their Sacco boundary.</p>
-      <p><strong>System Admin:</strong> manages global operations through Django admin.</p>
+    <div class="role-grid">
+      <div class="role-card">
+        <div class="role-icon">🚴</div>
+        <strong>Rider</strong>
+        <p>Manages dispatch availability and rider profile updates.</p>
+      </div>
+      <div class="role-card">
+        <div class="role-icon">🏢</div>
+        <strong>Sacco chair</strong>
+        <p>Reviews riders and activity inside the Sacco boundary.</p>
+      </div>
+      <div class="role-card">
+        <div class="role-icon">🛡️</div>
+        <strong>System admin</strong>
+        <p>Manages global operations and site administration.</p>
+      </div>
     </div>
   </div>
 </div>
+
+<style>
+  .auth-card { padding-bottom: 24px; }
+  .password-wrapper { position: relative; }
+  .icon-button {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+  }
+  .role-grid {
+    display: grid;
+    gap: 14px;
+  }
+  .role-card {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 18px;
+    padding: 18px;
+    background: #f8fafc;
+  }
+  .role-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    background: #fff; 
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    font-size: 1.1rem;
+  }
+  .role-card strong { display: block; margin-bottom: 8px; font-size: 1rem; }
+  .role-card p { margin: 0; color: #475569; font-size: 0.95rem; line-height: 1.6; }
+</style>
+
+<script>
+  const togglePassword = document.getElementById('toggle-password');
+  const passwordInput = document.getElementById('id_password');
+
+  if (togglePassword && passwordInput) {
+    togglePassword.addEventListener('click', () => {
+      const isHidden = passwordInput.type === 'password';
+      passwordInput.type = isHidden ? 'text' : 'password';
+      togglePassword.textContent = isHidden ? '🙈' : '👁️';
+      togglePassword.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+  }
+</script>
 {% endblock %}

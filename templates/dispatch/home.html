@@ -3,63 +3,265 @@
 {% block content %}
 <section class="hero">
   <div class="eyebrow">Patient emergency intake</div>
-  <h1>Open the app and broadcast an emergency request.</h1>
+  <h1>Broadcast an emergency request and share your location.</h1>
   <p class="subhead">
-    Patients only see the emergency intake panel. Rider lists, map telemetry, and Sacco compliance stay in the secure operator terminal.
+    Callers can submit location and triage details without logging in. Riders and Sacco staff receive the dispatch through the secure operator console.
   </p>
 </section>
 
 <div class="dashboard-grid">
-  <div class="card col-12" id="emergency-core">
+  <div class="card col-7" id="emergency-core">
     <div class="panel-head">
       <div>
         <h2 class="panel-title">Broadcast emergency request</h2>
-        <div class="panel-lead">Capture geolocation and triage details for the nearest rider dispatch.</div>
+        <div class="panel-lead">Capture your location automatically and send the incident details to the nearest rider.</div>
       </div>
       <a class="button secondary" href="{% url 'login' %}">Staff login</a>
     </div>
+
     <form method="post" action="{% url 'emergency_request_create' %}" class="stack-form" id="emergency-form">
       {% csrf_token %}
-      {{ emergency_form.as_p }}
-      <p class="hint">Use browser geolocation for the fastest response. If GPS is blocked, enter the location manually.</p>
+      {% if emergency_form.non_field_errors %}
+        <div class="split-output error-box">{{ emergency_form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="field-group">
+        <label for="id_caller_name">Caller name</label>
+        {{ emergency_form.caller_name }}
+        {{ emergency_form.caller_name.errors }}
+      </div>
+
+      <div class="field-group">
+        <label for="id_caller_phone">Caller phone</label>
+        {{ emergency_form.caller_phone }}
+        {{ emergency_form.caller_phone.errors }}
+      </div>
+
+      <div class="field-group">
+        <label for="id_emergency_type">Emergency type</label>
+        {{ emergency_form.emergency_type }}
+        {{ emergency_form.emergency_type.errors }}
+      </div>
+
+      <div class="field-group">
+        <label for="id_notes">Notes (optional)</label>
+        {{ emergency_form.notes }}
+        {{ emergency_form.notes.errors }}
+      </div>
+
+      <div class="hidden-field">
+        {{ emergency_form.latitude }}
+        {{ emergency_form.longitude }}
+      </div>
+
+      <p class="hint">Tap “Detect location” to pin your position automatically. If GPS cannot be used, enter the coordinates manually.</p>
+
       <div class="inline-actions">
-        <button class="button secondary" type="button" id="use-location-btn">Auto-locate</button>
-        <input type="submit" class="danger" value="Dispatch nearest rider">
+        <button type="button" class="button secondary" id="detect-location">Detect location</button>
+        <button type="button" class="button secondary" id="toggle-manual">Enter manually</button>
+        <input type="submit" class="button danger" value="Dispatch nearest rider">
+      </div>
+
+      <p class="location-note" id="location-status">Location not detected yet.</p>
+
+      <div class="surface manual-fields" id="manual-section" hidden>
+        <p class="hint">If the browser cannot access GPS, type the coordinates from your phone or map app.</p>
+        <div class="split-grid">
+          <div class="field-group">
+            <label for="manual-latitude">Latitude</label>
+            <input type="text" id="manual-latitude" name="manual_latitude" inputmode="decimal" placeholder="-1.292100">
+          </div>
+          <div class="field-group">
+            <label for="manual-longitude">Longitude</label>
+            <input type="text" id="manual-longitude" name="manual_longitude" inputmode="decimal" placeholder="36.821900">
+          </div>
+        </div>
       </div>
     </form>
-    <div class="split-output" id="location-output">Waiting for location data.</div>
+  </div>
+
+  <div class="card col-5">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Your location</h2>
+        <div class="panel-lead">A live pin shows the most recent detected coordinates.</div>
+      </div>
+    </div>
+    <div class="map-panel" id="location-map">
+      <div class="map-frame" id="map-frame">
+        <div class="map-marker" id="map-marker" aria-hidden="true"></div>
+        <div class="map-hint" id="map-hint">Tap “Detect location” to pin your position on the map automatically.</div>
+      </div>
+    </div>
+    <div class="surface location-summary">
+      <div class="split-grid">
+        <div>
+          <strong>Latitude</strong>
+          <p id="display-lat">—</p>
+        </div>
+        <div>
+          <strong>Longitude</strong>
+          <p id="display-lng">—</p>
+        </div>
+      </div>
+      <p class="hint">These coordinates are sent with your emergency request so the nearest rider can respond quickly.</p>
+    </div>
   </div>
 </div>
 
-<script>
-  const output = document.getElementById('location-output');
-  const latField = document.getElementById('id_latitude');
-  const lonField = document.getElementById('id_longitude');
-  const useLocationBtn = document.getElementById('use-location-btn');
+<style>
+  .error-box { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+  .hidden-field { display: none !important; }
+  .location-note { margin: 18px 0 0; color: #374151; font-size: 0.95rem; }
+  .map-panel { margin-top: 0; }
+  .map-frame {
+    position: relative;
+    min-height: 320px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #e2e8f0 0%, #f8fafc 100%);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    display: grid;
+    place-items: center;
+  }
+  .map-hint {
+    color: #475569;
+    text-align: center;
+    padding: 0 22px;
+    line-height: 1.5;
+    max-width: 24rem;
+  }
+  .map-marker {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #ff6b00;
+    box-shadow: 0 0 0 8px rgba(255, 107, 0, 0.14);
+    opacity: 0;
+    transition: opacity 180ms ease, transform 180ms ease;
+    transform: translate(-50%, -50%) scale(0.9);
+    top: 50%;
+    left: 50%;
+  }
+  .map-marker.active {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .manual-fields { margin-top: 20px; }
+  .split-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .location-summary strong { display: block; margin-bottom: 6px; font-size: 0.92rem; color: #374151; }
+  .location-summary p { margin: 0; color: #111827; font-size: 1.1rem; }
+  .password-wrap { position: relative; }
+  @media (max-width: 980px) {
+    .split-grid { grid-template-columns: 1fr; }
+  }
+</style>
 
-  function requestLocation() {
+<script>
+  const detectButton = document.getElementById('detect-location');
+  const toggleButton = document.getElementById('toggle-manual');
+  const manualSection = document.getElementById('manual-section');
+  const manualLat = document.getElementById('manual-latitude');
+  const manualLng = document.getElementById('manual-longitude');
+  const latField = document.getElementById('id_latitude');
+  const lngField = document.getElementById('id_longitude');
+  const statusText = document.getElementById('location-status');
+  const displayLat = document.getElementById('display-lat');
+  const displayLng = document.getElementById('display-lng');
+  const mapMarker = document.getElementById('map-marker');
+  const mapHint = document.getElementById('map-hint');
+  const form = document.getElementById('emergency-form');
+
+  function updateLocation(latitude, longitude, source) {
+    latField.value = latitude.toFixed(6);
+    lngField.value = longitude.toFixed(6);
+    displayLat.textContent = latitude.toFixed(6);
+    displayLng.textContent = longitude.toFixed(6);
+    statusText.textContent = source === 'geo' ? 'Location captured automatically.' : 'Manual coordinates entered.';
+    mapMarker.classList.add('active');
+    mapHint.textContent = 'Your location is pinned and ready to send.';
+  }
+
+  function showManualSection() {
+    manualSection.hidden = false;
+    statusText.textContent = 'Enter coordinates manually if GPS is unavailable.';
+  }
+
+  function setError(message) {
+    statusText.textContent = message;
+    mapHint.textContent = message;
+    mapMarker.classList.remove('active');
+  }
+
+  async function requestLocation() {
     if (!navigator.geolocation) {
-      output.textContent = 'Geolocation is not available in this browser.';
+      setError('Geolocation is not supported by this browser. Use manual entry instead.');
+      showManualSection();
       return;
     }
-    output.textContent = 'Requesting GPS lock...';
+
+    statusText.textContent = 'Requesting GPS lock...';
+    mapHint.textContent = 'Allow location permission in your browser to pin your position.';
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        if (latField && lonField) {
-          latField.value = position.coords.latitude.toFixed(6);
-          lonField.value = position.coords.longitude.toFixed(6);
+        updateLocation(position.coords.latitude, position.coords.longitude, 'geo');
+        manualSection.hidden = true;
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setError('Location permission denied. Use manual entry instead.');
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setError('GPS position unavailable. Try again or enter coordinates manually.');
+        } else if (error.code === error.TIMEOUT) {
+          setError('Location request timed out. Try again or enter coordinates manually.');
+        } else {
+          setError('Unable to detect location. Use manual coordinates if needed.');
         }
-        output.textContent = `Location captured: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+        showManualSection();
       },
-      () => {
-        output.textContent = 'Location request failed. Enter coordinates manually or try again.';
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   }
 
-  if (useLocationBtn) {
-    useLocationBtn.addEventListener('click', requestLocation);
+  detectButton.addEventListener('click', requestLocation);
+  toggleButton.addEventListener('click', () => {
+    manualSection.hidden = !manualSection.hidden;
+    toggleButton.textContent = manualSection.hidden ? 'Enter manually' : 'Hide manual fields';
+    if (!manualSection.hidden) {
+      statusText.textContent = 'Please type latitude and longitude below.';
+    }
+  });
+
+  function parseDecimal(value) {
+    const parsed = parseFloat(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
   }
+
+  function syncManualToHidden() {
+    const lat = parseDecimal(manualLat.value);
+    const lng = parseDecimal(manualLng.value);
+    if (lat !== null && lng !== null) {
+      updateLocation(lat, lng, 'manual');
+    }
+  }
+
+  manualLat.addEventListener('input', syncManualToHidden);
+  manualLng.addEventListener('input', syncManualToHidden);
+
+  form.addEventListener('submit', (event) => {
+    if (!latField.value || !lngField.value) {
+      const lat = parseDecimal(manualLat.value);
+      const lng = parseDecimal(manualLng.value);
+      if (lat !== null && lng !== null) {
+        updateLocation(lat, lng, 'manual');
+        return;
+      }
+      event.preventDefault();
+      setError('Please detect your location or enter latitude and longitude manually before submitting.');
+      showManualSection();
+    }
+  });
 </script>
 {% endblock %}
