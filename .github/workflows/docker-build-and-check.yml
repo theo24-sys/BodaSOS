@@ -1,0 +1,32 @@
+name: Build Docker image and run checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: bodasos:ci
+
+      - name: Run container checks
+        run: |
+          docker run --rm -e DATABASE_URL=sqlite:///db.sqlite3 -e DEBUG=1 bodasos:ci sh -c "python manage.py check --deploy || true && python manage.py check"
