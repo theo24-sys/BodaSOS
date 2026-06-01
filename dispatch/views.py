@@ -15,6 +15,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.db.models import Count, Avg, F, ExpressionWrapper, DurationField
 
 from patients.forms import EmergencyRequestForm
 from riders.forms import RiderForm
@@ -363,6 +364,99 @@ def emergency_api_list_create(request):
     emergency = serializer.save()
     assign_nearest_rider(emergency)
     return Response(EmergencyRequestSerializer(emergency).data, status=201)
+
+
+@login_required
+def dashboard(request):
+    """Render a lightweight dashboard for operators and riders."""
+    ctx = _portal_context(request)
+    return render(request, "dispatch/dashboard.html", ctx)
+
+
+@require_http_methods(["GET"])
+def dashboard_metrics_api(request):
+    """Return aggregated metrics for dashboards as JSON."""
+    total_emergencies = EmergencyRequest.objects.count()
+    pending = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.PENDING).count()
+    assigned = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.ASSIGNED).count()
+    completed = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.COMPLETED).count()
+    no_rider = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.NO_RIDER_FOUND).count()
+
+    active_riders = Rider.objects.filter(status=Rider.DispatchStatus.ACTIVE).count()
+
+    # average response time (completed requests)
+    avg_duration = (
+        EmergencyRequest.objects.filter(status=EmergencyRequest.Status.COMPLETED)
+        .annotate(duration=ExpressionWrapper(F("updated_at") - F("created_at"), output_field=DurationField()))
+        .aggregate(avg=Avg("duration"))
+    )
+    avg_seconds = None
+    if avg_duration and avg_duration.get("avg"):
+        avg_seconds = int(avg_duration["avg"].total_seconds())
+
+    types = list(
+        EmergencyRequest.objects.values("emergency_type").annotate(count=Count("id")).order_by("emergency_type")
+    )
+
+    anonymous_triggers = EmergencyRequest.objects.filter(device_session_id__isnull=False).exclude(device_session_id="").count()
+    confirmed_dispatches = EmergencyRequest.objects.filter(device_session_id__isnull=False).exclude(device_session_id="").filter(
+        status__in=[EmergencyRequest.Status.ASSIGNED, EmergencyRequest.Status.COMPLETED]
+    ).count()
+    resolved_requests = EmergencyRequest.objects.filter(device_session_id__isnull=False).exclude(device_session_id="").filter(
+        status=EmergencyRequest.Status.COMPLETED
+    ).count()
+
+    data = {
+        "total_emergencies": total_emergencies,
+        "pending": pending,
+        "assigned": assigned,
+        "completed": completed,
+        "no_rider": no_rider,
+        "active_riders": active_riders,
+        "avg_response_seconds": avg_seconds,
+        "by_type": types,
+        "funnel": {
+            "anonymous_triggers": anonymous_triggers,
+            "confirmed_dispatches": confirmed_dispatches,
+            "resolved_requests": resolved_requests,
+        },
+    }
+    return JsonResponse(data)
+
+
+@require_http_methods(["GET"])
+def dashboard_active_emergencies(request):
+    qs = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.PENDING).order_by("-created_at")[:500]
+    items = []
+    for e in qs:
+        items.append(
+            {
+                "id": e.id,
+                "latitude": float(e.latitude),
+                "longitude": float(e.longitude),
+                "created_at": e.created_at.isoformat(),
+                "emergency_type": e.emergency_type,
+            }
+        )
+    return JsonResponse({"items": items})
+
+
+@require_http_methods(["GET"])
+def dashboard_riders(request):
+    qs = Rider.objects.filter(status=Rider.DispatchStatus.ACTIVE).order_by("-last_seen_at")[:1000]
+    items = []
+    for r in qs:
+        items.append(
+            {
+                "id": r.id,
+                "full_name": r.full_name,
+                "phone_number": r.phone_number,
+                "latitude": float(r.latitude),
+                "longitude": float(r.longitude),
+                "last_seen_at": r.last_seen_at.isoformat(),
+            }
+        )
+    return JsonResponse({"items": items})
 
 
 @api_view(["POST"])

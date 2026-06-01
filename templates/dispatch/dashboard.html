@@ -1,0 +1,156 @@
+{% extends "dispatch/base.html" %}
+{% block title %}BodaSOS Dashboard{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">Operator console</div>
+  <h1>Response metrics and live incident map</h1>
+  <p class="subhead">Real-time view of active emergencies, rider availability and response performance.</p>
+</section>
+
+<div class="stat-grid" style="margin-bottom:18px;">
+  <div class="stat card">
+    <strong id="stat-total">—</strong>
+    <span>Total incidents</span>
+  </div>
+  <div class="stat card">
+    <strong id="stat-pending">—</strong>
+    <span>Pending</span>
+  </div>
+  <div class="stat card">
+    <strong id="stat-avg">—</strong>
+    <span>Avg response (s)</span>
+  </div>
+  <div class="stat card">
+    <strong id="stat-riders">—</strong>
+    <span>Active riders</span>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <div class="card col-7">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Live incident map</h2>
+        <div class="panel-lead">Active emergency requests and rider positions.</div>
+      </div>
+    </div>
+    <div id="map" style="height:480px;border-radius:14px;overflow:hidden;"></div>
+  </div>
+
+  <div class="card col-5">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Emergency types</h2>
+        <div class="panel-lead">Distribution by reported type.</div>
+      </div>
+    </div>
+    <canvas id="typesChart" width="400" height="300"></canvas>
+
+    <div style="margin-top:18px;">
+      <h3 style="margin:0 0 8px;">Triage funnel</h3>
+      <div class="stat" style="margin-bottom:8px;">
+        <strong id="funnel-anon">—</strong>
+        <span>Anonymous triggers</span>
+      </div>
+      <div class="stat" style="margin-bottom:8px;">
+        <strong id="funnel-confirmed">—</strong>
+        <span>Confirmed dispatches</span>
+      </div>
+      <div class="stat">
+        <strong id="funnel-resolved">—</strong>
+        <span>Resolved requests</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- External libs via CDN -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2p5rYl+0gk0+7TqgqQxq3yZ9w3F5n3bZfQYvC+M=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j9g7k2bQh3k3T4hN5kF6s9s0c5+1zYhGq0sYQRM=" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+async function fetchMetrics() {
+  const res = await fetch('/api/dashboard/metrics/');
+  return res.json();
+}
+async function fetchActive() {
+  const res = await fetch('/api/dashboard/active-emergencies/');
+  return res.json();
+}
+async function fetchRiders() {
+  const res = await fetch('/api/dashboard/riders/');
+  return res.json();
+}
+
+let map;
+let riderLayer;
+let emergencyLayer;
+
+function initMap() {
+  map = L.map('map').setView([0.0236, 37.9062], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+  }).addTo(map);
+  riderLayer = L.layerGroup().addTo(map);
+  emergencyLayer = L.layerGroup().addTo(map);
+}
+
+function updateMap(riders, emergencies) {
+  riderLayer.clearLayers();
+  emergencyLayer.clearLayers();
+  riders.items.forEach(r => {
+    const m = L.circleMarker([r.latitude, r.longitude], { radius:7, color:'#10b981', fill:true, fillOpacity:0.9 });
+    m.bindPopup(`<strong>${r.full_name}</strong><br/>${r.phone_number}`);
+    riderLayer.addLayer(m);
+  });
+  emergencies.items.forEach(e => {
+    const m = L.marker([e.latitude, e.longitude], { title: `#${e.id}` });
+    m.bindPopup(`<strong>Request #${e.id}</strong><br/>Type: ${e.emergency_type}<br/>${new Date(e.created_at).toLocaleString()}`);
+    emergencyLayer.addLayer(m);
+  });
+}
+
+let typesChart;
+function renderCharts(byType) {
+  const labels = byType.map(t => t.emergency_type);
+  const data = byType.map(t => t.count);
+  const ctx = document.getElementById('typesChart').getContext('2d');
+  if (typesChart) typesChart.destroy();
+  typesChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{ label: 'Incidents', data: data, backgroundColor: '#ffb27a' }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+
+async function refreshDashboard() {
+  try {
+    const [metrics, emergencies, riders] = await Promise.all([fetchMetrics(), fetchActive(), fetchRiders()]);
+    document.getElementById('stat-total').textContent = metrics.total_emergencies;
+    document.getElementById('stat-pending').textContent = metrics.pending;
+    document.getElementById('stat-avg').textContent = metrics.avg_response_seconds || '—';
+    document.getElementById('stat-riders').textContent = metrics.active_riders;
+
+    document.getElementById('funnel-anon').textContent = metrics.funnel.anonymous_triggers;
+    document.getElementById('funnel-confirmed').textContent = metrics.funnel.confirmed_dispatches;
+    document.getElementById('funnel-resolved').textContent = metrics.funnel.resolved_requests;
+
+    renderCharts(metrics.by_type || []);
+    updateMap(riders, emergencies);
+  } catch (err) {
+    console.error('Dashboard refresh failed', err);
+  }
+}
+
+window.addEventListener('load', () => {
+  initMap();
+  refreshDashboard();
+  setInterval(refreshDashboard, 15000);
+});
+</script>
+
+{% endblock %}
