@@ -12,6 +12,11 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/bodasos-icon.png",
+      "type": "image/png",
+      "sizes": "256x256"
     }
   ],
   "start_url": "/",
