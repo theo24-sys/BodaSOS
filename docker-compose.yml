@@ -6,7 +6,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       - DEBUG=True
       - SECRET_KEY=sandbox_local_secret_key_12345
@@ -14,6 +14,21 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=localhost,127.0.0.1,web
       - CORS_ALLOWED_ORIGINS=http://localhost:8000
+    depends_on:
+      - db
+      - redis
+
+  daphne:
+    build: .
+    command: daphne -b 0.0.0.0 -p 8000 salamanoda.asgi:application
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=sandbox_local_secret_key_12345
+      - DATABASE_URL=postgis://postgres:postgres@db:5432/bodasos_db
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_HOSTS=localhost,127.0.0.1,web
     depends_on:
       - db
       - redis

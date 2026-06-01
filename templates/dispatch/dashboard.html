@@ -33,8 +33,18 @@
         <h2 class="panel-title">Live incident map</h2>
         <div class="panel-lead">Active emergency requests and rider positions.</div>
       </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="toggle-cluster" class="button secondary">Cluster</button>
+        <button id="toggle-heat" class="button secondary">Heatmap</button>
+      </div>
     </div>
     <div id="map" style="height:480px;border-radius:14px;overflow:hidden;"></div>
+    <div style="margin-top:8px;font-size:0.92rem;color:#6b7280;">
+      <strong>Legend:</strong>
+      <span style="display:inline-block;margin-left:8px;">● <span style="color:#10b981">Rider</span></span>
+      <span style="display:inline-block;margin-left:12px;">📍 <span style="color:#ff6b00">Incident</span></span>
+      <span style="display:inline-block;margin-left:12px;">🌡️ <span>Heat density</span></span>
+    </div>
   </div>
 
   <div class="card col-5">
@@ -126,6 +136,28 @@ function updateMap(riders, emergencies) {
   clusterGroup.refreshClusters && clusterGroup.refreshClusters();
 }
 
+// Map controls for clustering vs heatmap
+function enableClustering(enable) {
+  if (!clusterGroup) return;
+  if (enable) {
+    if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+    if (map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+  } else {
+    if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+  }
+}
+
+function enableHeatmap(enable) {
+  if (!heatLayer) return;
+  if (enable) {
+    if (!map.hasLayer(heatLayer)) map.addLayer(heatLayer);
+    if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+  } else {
+    if (map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+    if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+  }
+}
+
 let typesChart;
 function renderCharts(byType) {
   const labels = byType.map(t => t.emergency_type);
@@ -183,6 +215,23 @@ window.addEventListener('load', () => {
   } catch (e) {
     console.debug('WebSocket not available', e);
   }
+  // Toggle buttons
+  const toggleClusterBtn = document.getElementById('toggle-cluster');
+  const toggleHeatBtn = document.getElementById('toggle-heat');
+  let clusterOn = true;
+  let heatOn = false;
+  toggleClusterBtn.addEventListener('click', () => {
+    clusterOn = !clusterOn;
+    enableClustering(clusterOn);
+    toggleClusterBtn.textContent = clusterOn ? 'Cluster' : 'No cluster';
+    if (clusterOn) { heatOn = false; enableHeatmap(false); toggleHeatBtn.textContent = 'Heatmap'; }
+  });
+  toggleHeatBtn.addEventListener('click', () => {
+    heatOn = !heatOn;
+    enableHeatmap(heatOn);
+    toggleHeatBtn.textContent = heatOn ? 'Heatmap (on)' : 'Heatmap';
+    if (heatOn) { clusterOn = false; enableClustering(false); toggleClusterBtn.textContent = 'Cluster'; }
+  });
 });
 </script>
 
