@@ -64,9 +64,13 @@
   </div>
 </div>
 
-<!-- External libs via CDN -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2p5rYl+0gk0+7TqgqQxq3yZ9w3F5n3bZfQYvC+M=" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j9g7k2bQh3k3T4hN5kF6s9s0c5+1zYhGq0sYQRM=" crossorigin=""></script>
+<!-- External libs via CDN: Leaflet, MarkerCluster, Heatmap and Chart.js -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -86,19 +90,27 @@ async function fetchRiders() {
 let map;
 let riderLayer;
 let emergencyLayer;
+let clusterGroup;
+let heatLayer;
 
 function initMap() {
   map = L.map('map').setView([0.0236, 37.9062], 6);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
   }).addTo(map);
-  riderLayer = L.layerGroup().addTo(map);
-  emergencyLayer = L.layerGroup().addTo(map);
+  clusterGroup = L.markerClusterGroup();
+  riderLayer = L.layerGroup();
+  emergencyLayer = L.layerGroup();
+  clusterGroup.addLayer(riderLayer);
+  clusterGroup.addLayer(emergencyLayer);
+  map.addLayer(clusterGroup);
+  heatLayer = L.heatLayer([], { radius: 25, blur: 18, maxZoom: 17 }).addTo(map);
 }
 
 function updateMap(riders, emergencies) {
   riderLayer.clearLayers();
   emergencyLayer.clearLayers();
+  heatLayer.setLatLngs([]);
   riders.items.forEach(r => {
     const m = L.circleMarker([r.latitude, r.longitude], { radius:7, color:'#10b981', fill:true, fillOpacity:0.9 });
     m.bindPopup(`<strong>${r.full_name}</strong><br/>${r.phone_number}`);
@@ -108,7 +120,10 @@ function updateMap(riders, emergencies) {
     const m = L.marker([e.latitude, e.longitude], { title: `#${e.id}` });
     m.bindPopup(`<strong>Request #${e.id}</strong><br/>Type: ${e.emergency_type}<br/>${new Date(e.created_at).toLocaleString()}`);
     emergencyLayer.addLayer(m);
+    heatLayer.addLatLng([e.latitude, e.longitude, 0.6]);
   });
+  // refresh cluster to include latest layers
+  clusterGroup.refreshClusters && clusterGroup.refreshClusters();
 }
 
 let typesChart;
@@ -150,6 +165,24 @@ window.addEventListener('load', () => {
   initMap();
   refreshDashboard();
   setInterval(refreshDashboard, 15000);
+  // WebSocket for incremental updates
+  try {
+    const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(protocol + '://' + location.host + '/ws/dashboard/updates/');
+    ws.addEventListener('message', (ev) => {
+      try {
+        const payload = JSON.parse(ev.data);
+        // simple strategy: refresh small parts depending on event
+        if (payload.event === 'emergency_saved' || payload.event === 'rider_saved') {
+          // fetch only active lists and update map
+          Promise.all([fetchActive(), fetchRiders()]).then(([em, rd]) => updateMap(rd, em));
+        }
+      } catch (e) { console.error(e); }
+    });
+    ws.addEventListener('open', () => console.debug('Dashboard WS open'));
+  } catch (e) {
+    console.debug('WebSocket not available', e);
+  }
 });
 </script>
 

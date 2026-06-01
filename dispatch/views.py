@@ -376,6 +376,9 @@ def dashboard(request):
 @require_http_methods(["GET"])
 def dashboard_metrics_api(request):
     """Return aggregated metrics for dashboards as JSON."""
+    if not _require_authenticated_role(request, allow_admin=True, allow_chairman=True):
+        return JsonResponse({"detail": "Authentication required."}, status=403)
+
     total_emergencies = EmergencyRequest.objects.count()
     pending = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.PENDING).count()
     assigned = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.ASSIGNED).count()
@@ -426,6 +429,9 @@ def dashboard_metrics_api(request):
 
 @require_http_methods(["GET"])
 def dashboard_active_emergencies(request):
+    if not _require_authenticated_role(request, allow_admin=True, allow_chairman=True):
+        return JsonResponse({"detail": "Authentication required."}, status=403)
+
     qs = EmergencyRequest.objects.filter(status=EmergencyRequest.Status.PENDING).order_by("-created_at")[:500]
     items = []
     for e in qs:
@@ -443,6 +449,9 @@ def dashboard_active_emergencies(request):
 
 @require_http_methods(["GET"])
 def dashboard_riders(request):
+    if not _require_authenticated_role(request, allow_admin=True, allow_chairman=True):
+        return JsonResponse({"detail": "Authentication required."}, status=403)
+
     qs = Rider.objects.filter(status=Rider.DispatchStatus.ACTIVE).order_by("-last_seen_at")[:1000]
     items = []
     for r in qs:
