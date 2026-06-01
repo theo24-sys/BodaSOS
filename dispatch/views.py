@@ -155,7 +155,23 @@ const CORE_ASSETS = ['/', '/login/', '/static/manifest.json', '/static/images/bo
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+        caches.open(CACHE_NAME).then((cache) => {
+            return Promise.allSettled(
+                CORE_ASSETS.map((url) =>
+                    fetch(url)
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error(`Failed to fetch ${url}: ${response.status}`);
+                            }
+                            return cache.put(url, response);
+                        })
+                        .catch((error) => {
+                            console.warn('Service worker cache failed:', url, error);
+                            return null;
+                        })
+                )
+            );
+        })
     );
     self.skipWaiting();
 });
