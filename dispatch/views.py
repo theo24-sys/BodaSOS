@@ -121,21 +121,26 @@ def portal(request):
 def web_manifest(request):
     return JsonResponse(
         {
-            "name": "BodaSOS",
+            "name": "BodaSOS Emergency Dispatch",
             "short_name": "BodaSOS",
             "description": "Mobile-first emergency dispatch for Kenyan boda boda networks.",
             "start_url": "/",
             "scope": "/",
             "display": "standalone",
-            "background_color": "#121212",
-            "theme_color": "#FF6B00",
+            "background_color": "#111827",
+            "theme_color": "#EF4444",
             "icons": [
                 {
-                    "src": static("dispatch/bodasos-icon.png"),
-                    "sizes": "1024x1024",
+                    "src": static("images/bodasos-icon.png"),
+                    "sizes": "192x192",
+                    "type": "image/png",
+                },
+                {
+                    "src": static("images/bodasos-icon.png"),
+                    "sizes": "512x512",
                     "type": "image/png",
                     "purpose": "any maskable",
-                }
+                },
             ],
         }
     )
@@ -145,7 +150,7 @@ def web_manifest(request):
 def service_worker(request):
     script = """
 const CACHE_NAME = 'bodasos-shell-v1';
-const CORE_ASSETS = ['/', '/login/', '/manifest.webmanifest'];
+const CORE_ASSETS = ['/', '/login/', '/static/manifest.json', '/static/images/bodasos-icon.png', '/static/images/bodasos-bg.png', '/service-worker.js'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(

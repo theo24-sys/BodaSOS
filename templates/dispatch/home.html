@@ -7,7 +7,19 @@
   <p class="subhead">
     Callers can submit location and triage details without logging in. Riders and Sacco staff receive the dispatch through the secure operator console.
   </p>
+  <div class="hero-actions">
+    <a class="button secondary" href="{% url 'login' %}">Staff login</a>
+  </div>
 </section>
+
+<div class="app-splash" id="app-splash">
+  <div class="splash-card">
+    <img class="splash-logo" src="{% static 'images/bodasos-icon.png' %}" alt="BodaSOS" />
+    <h2 class="splash-title">BodaSOS</h2>
+    <p class="splash-copy">Instant emergency dispatch, installed like a native app.</p>
+    <div class="splash-pulse" aria-hidden="true"></div>
+  </div>
+</div>
 
 <div class="dashboard-grid">
   <div class="card col-7" id="emergency-core">
@@ -16,7 +28,6 @@
         <h2 class="panel-title">Broadcast emergency request</h2>
         <div class="panel-lead">Capture your location automatically and send the incident details to the nearest rider.</div>
       </div>
-      <a class="button secondary" href="{% url 'login' %}">Staff login</a>
     </div>
 
     <form method="post" action="{% url 'emergency_request_create' %}" class="stack-form" id="emergency-form">
@@ -52,14 +63,15 @@
       <div class="hidden-field">
         {{ emergency_form.latitude }}
         {{ emergency_form.longitude }}
+        {{ emergency_form.device_session_id }}
       </div>
 
       <p class="hint">Tap “Detect location” to pin your position automatically. If GPS cannot be used, enter the coordinates manually.</p>
 
       <div class="inline-actions">
-        <button type="button" class="button secondary" id="detect-location">Detect location</button>
-        <button type="button" class="button secondary" id="toggle-manual">Enter manually</button>
-        <input type="submit" class="button danger" value="Dispatch nearest rider">
+        <button type="button" class="button danger mobile-btn-active" id="detect-location">Detect location and dispatch</button>
+        <button type="button" class="button secondary mobile-btn-active" id="toggle-manual">Enter manually</button>
+        <input type="submit" class="button danger mobile-btn-active" value="Dispatch nearest rider">
       </div>
 
       <p class="location-note" id="location-status">Location not detected yet.</p>
@@ -152,9 +164,61 @@
   .split-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .location-summary strong { display: block; margin-bottom: 6px; font-size: 0.92rem; color: #374151; }
   .location-summary p { margin: 0; color: #111827; font-size: 1.1rem; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .app-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    background: #111827;
+    color: #f8fafc;
+    transition: opacity 0.45s ease;
+  }
+  .app-splash.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .splash-card {
+    padding: 28px 24px;
+    border-radius: 28px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 36px 90px rgba(0, 0, 0, 0.28);
+  }
+  .splash-logo {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 18px;
+  }
+  .splash-title {
+    margin: 0 0 10px;
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    letter-spacing: -0.04em;
+  }
+  .splash-copy {
+    color: #cbd5e1;
+    line-height: 1.7;
+    margin-bottom: 22px;
+  }
+  .splash-pulse {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto;
+    border-radius: 999px;
+    background: rgba(255, 107, 0, 0.18);
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    70% { transform: scale(1.4); opacity: 0; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
   .password-wrap { position: relative; }
   @media (max-width: 980px) {
     .split-grid { grid-template-columns: 1fr; }
+    .panel-head { flex-wrap: wrap; }
   }
 </style>
 
@@ -172,6 +236,35 @@
   const mapMarker = document.getElementById('map-marker');
   const mapHint = document.getElementById('map-hint');
   const form = document.getElementById('emergency-form');
+  const splash = document.getElementById('app-splash');
+  const deviceSessionInput = document.getElementById('id_device_session_id');
+
+  const DEVICE_SESSION_KEY = 'bodasos_device_session_id';
+
+  function getDeviceSessionId() {
+    let token = window.localStorage.getItem(DEVICE_SESSION_KEY);
+    if (!token) {
+      token = window.crypto?.randomUUID?.() || `bodasos-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      window.localStorage.setItem(DEVICE_SESSION_KEY, token);
+    }
+    return token;
+  }
+
+  function syncSessionToken() {
+    if (deviceSessionInput) {
+      deviceSessionInput.value = getDeviceSessionId();
+    }
+  }
+
+  function hideSplash() {
+    if (!splash) {
+      return;
+    }
+    splash.classList.add('fade-out');
+    window.setTimeout(() => {
+      splash.hidden = true;
+    }, 450);
+  }
 
   function updateLocation(latitude, longitude, source) {
     latField.value = latitude.toFixed(6);
@@ -194,7 +287,7 @@
     mapMarker.classList.remove('active');
   }
 
-  async function requestLocation() {
+  async function requestLocation(submitAfter = false) {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by this browser. Use manual entry instead.');
       showManualSection();
@@ -208,6 +301,11 @@
       (position) => {
         updateLocation(position.coords.latitude, position.coords.longitude, 'geo');
         manualSection.hidden = true;
+        hideSplash();
+        if (submitAfter) {
+          syncSessionToken();
+          form.submit();
+        }
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {
@@ -225,7 +323,16 @@
     );
   }
 
-  detectButton.addEventListener('click', requestLocation);
+
+  window.addEventListener('load', () => {
+    syncSessionToken();
+    if (splash) {
+      window.setTimeout(hideSplash, 2200);
+    }
+  });
+
+  detectButton.addEventListener('click', () => requestLocation(true));
+
   toggleButton.addEventListener('click', () => {
     manualSection.hidden = !manualSection.hidden;
     toggleButton.textContent = manualSection.hidden ? 'Enter manually' : 'Hide manual fields';

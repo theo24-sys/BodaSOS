@@ -2,11 +2,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from decouple import config
 
 from core.health import health_check
 
+ADMIN_URL_GATEKEEPER = config("DJANGO_ADMIN_URL", default="internal-ops-gate-x937f")
+
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(f"{ADMIN_URL_GATEKEEPER.strip('/')}/", admin.site.urls),
     path("health/", health_check, name="health_check"),
     path("api/v1/", include(("api.v1.urls", "api"), namespace="v1")),
     path("auth/", include("django.contrib.auth.urls")),

@@ -134,8 +134,9 @@ class EmergencyRequest(models.Model):
         USSD = "ussd", "USSD"
         DISPATCHER = "dispatcher", "Dispatcher"
 
-    caller_name = models.CharField(max_length=120)
-    caller_phone = models.CharField(max_length=32)
+    caller_name = models.CharField(max_length=120, blank=True, default="")
+    caller_phone = models.CharField(max_length=32, blank=True, default="")
+    device_session_id = models.CharField(max_length=64, blank=True, default="", db_index=True)
     emergency_type = models.CharField(max_length=16, choices=EmergencyType.choices, default=EmergencyType.OTHER)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)

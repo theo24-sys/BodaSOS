@@ -50,7 +50,7 @@
         <a class="button" href="{% url 'sacco_dashboard' chairman_sacco.slug %}?token={{ chairman_sacco.access_token }}">Open Sacco dashboard</a>
       {% endif %}
       {% if request.user.is_superuser %}
-        <a class="button" href="/admin/">Open Django admin</a>
+        <span class="badge success">Admin access is hidden</span>
       {% endif %}
     </div>
   </div>
@@ -58,10 +58,9 @@
 
 <div class="dashboard-grid" style="margin-top:18px;">
   <div class="card col-4">
-    <div class="panel-head"><div><h2 class="panel-title">Admin dashboard</h2><div class="panel-lead">System control and global oversight.</div></div></div>
+    <div class="panel-head"><div><h2 class="panel-title">Secure operations</h2><div class="panel-lead">The admin console is hidden behind a strong, randomized route.</div></div></div>
     <div class="surface">
-      <p>Use Django admin for full CRUD, configs, and global access.</p>
-      <a class="button" href="/admin/">Open admin</a>
+      <p>System admin access is kept out of the public workflow. Use the environment-configured internal gateway URL.</p>
     </div>
   </div>
   <div class="card col-4">

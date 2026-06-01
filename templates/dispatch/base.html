@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>{% block title %}BodaSOS{% endblock %}</title>
     {% load static %}
-    <link rel="manifest" href="{% url 'web_manifest' %}">
-    <link rel="icon" type="image/png" href="{% static 'dispatch/bodasos-icon.png' %}">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/bodasos-icon.png' %}">
     <style>
       :root {
         color-scheme: light;
@@ -138,6 +138,12 @@
         color: #ffffff;
         border-color: rgba(0,0,0,0.04);
       }
+      .mobile-btn-active {
+        transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .mobile-btn-active:active {
+        transform: scale(0.96);
+      }
       .install-button[hidden] { display: none !important; }
       .install-banner {
         display: none;
@@ -147,8 +153,14 @@
         background: #fff7ed;
         border: 1px solid #fed7aa;
         color: #9a3412;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
       }
       .install-banner strong { display: block; margin-bottom: 4px; }
+      .install-banner .install-button {
+        margin: 0;
+      }
       .messages {
         list-style: none;
         padding: 0;
@@ -310,6 +322,7 @@
         .panel-head { flex-direction: column; align-items: flex-start; }
         .button, button, input[type="submit"] { width: 100%; }
         .mobile-only { display: inline-flex; }
+        .panel-head .button.secondary { width: auto; }
       }
       @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
@@ -344,8 +357,11 @@
       </header>
 
       <div class="install-banner" id="install-banner">
-        <strong>Install BodaSOS on your phone</strong>
-        Add this app to your home screen for faster access during emergencies and dispatch work.
+        <div>
+          <strong>Install BodaSOS on your phone</strong>
+          <div>Add this app to your home screen for faster access during emergencies and dispatch work.</div>
+        </div>
+        <button id="install-app-btn" class="button install-button" hidden>Install app</button>
       </div>
 
       {% if messages %}
