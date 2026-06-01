@@ -5,7 +5,7 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.models import Group
-from django.contrib.auth.models import User
+from accounts.models import User
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.templatetags.static import static
@@ -568,11 +568,11 @@ def anonymous_trigger(request):
         device_session_id=device_session,
         latitude=lat_f,
         longitude=lon_f,
-        emergency_type=EmergencyRequest.EmergencyType.GENERAL,
+        emergency_type=EmergencyRequest.EmergencyType.OTHER,
         caller_name="Anonymous",
         caller_phone="",
         request_source=EmergencyRequest.RequestSource.WEB,
-        note=note,
+        notes=note,
     )
 
     # attempt to assign nearest rider asynchronously

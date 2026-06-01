@@ -1,13 +1,228 @@
-{% extends "base.html" %}
+{% extends "dispatch/base.html" %}
+
+{% block title %}BodaSOS | Emergency SOS{% endblock %}
+
 {% block content %}
-<div class="mx-auto flex min-h-[calc(100vh-72px)] max-w-3xl flex-col items-center justify-center gap-6 px-4 text-center">
-	<button id="sos-button" class="flex h-56 w-56 items-center justify-center rounded-full bg-[#DC2626] text-5xl font-black text-white shadow-2xl shadow-red-200 transition-transform duration-200 hover:scale-105">SOS</button>
-	<div class="flex flex-wrap justify-center gap-3">
-		<button class="emergency-type rounded-full bg-[#F3F4F6] px-4 py-2 font-semibold" data-type="accident">Accident</button>
-		<button class="emergency-type rounded-full bg-[#F3F4F6] px-4 py-2 font-semibold" data-type="obstetric">Obstetric</button>
-		<button class="emergency-type rounded-full bg-[#F3F4F6] px-4 py-2 font-semibold" data-type="cardiac">Cardiac</button>
-	</div>
-	<div id="dispatch-status" class="max-w-lg text-sm text-gray-600">Tap SOS to start an emergency request.</div>
-	<button id="voice-guide-link" class="text-sm font-semibold text-[#FF6B00]">Open voice first aid guide</button>
+<div class="sos-container">
+  <button id="sos-button" class="sos-button">SOS</button>
+
+  <div class="emergency-types">
+    <button class="emergency-type" data-type="accident">Accident</button>
+    <button class="emergency-type" data-type="obstetric">Obstetric</button>
+    <button class="emergency-type" data-type="cardiac">Cardiac</button>
+  </div>
+
+  <div id="dispatch-status" class="dispatch-status">Tap SOS to start an emergency request.</div>
+  <button id="voice-guide-link" class="voice-guide-link">Open voice first aid guide</button>
 </div>
+
+<style>
+  .sos-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    min-height: calc(100vh - 140px);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .sos-button {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: var(--danger);
+    border: none;
+    color: #ffffff;
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    cursor: pointer;
+    box-shadow: 0 20px 50px rgba(220, 38, 38, 0.4);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s linear;
+    will-change: transform;
+  }
+
+  .sos-button:hover {
+    transform: scale(1.08);
+    filter: brightness(1.1);
+  }
+
+  .sos-button:active {
+    transform: scale(0.96);
+    filter: brightness(0.95);
+  }
+
+  .emergency-types {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .emergency-type {
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .emergency-type:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .emergency-type.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+  }
+
+  .dispatch-status {
+    max-width: 520px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .voice-guide-link {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: color 0.2s ease, opacity 0.2s ease;
+    text-decoration: underline;
+  }
+
+  .voice-guide-link:hover {
+    opacity: 0.8;
+  }
+
+  .voice-guide-link:active {
+    opacity: 0.6;
+  }
+
+  @media (max-width: 640px) {
+    .sos-container {
+      min-height: calc(100vh - 120px);
+      gap: 18px;
+      padding: 16px;
+    }
+
+    .sos-button {
+      width: 180px;
+      height: 180px;
+      font-size: 2.8rem;
+    }
+
+    .emergency-types {
+      gap: 10px;
+    }
+
+    .emergency-type {
+      padding: 9px 14px;
+      font-size: 0.9rem;
+    }
+
+    .dispatch-status {
+      font-size: 0.9rem;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .sos-container {
+      min-height: calc(100vh - 110px);
+      gap: 14px;
+      padding: 12px;
+    }
+
+    .sos-button {
+      width: 160px;
+      height: 160px;
+      font-size: 2.4rem;
+    }
+
+    .emergency-types {
+      gap: 8px;
+    }
+
+    .emergency-type {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .dispatch-status {
+      font-size: 0.85rem;
+    }
+  }
+</style>
+
+<script>
+  const sosButton = document.getElementById('sos-button');
+  const emergencyTypeButtons = document.querySelectorAll('.emergency-type');
+  const dispatchStatus = document.getElementById('dispatch-status');
+  const voiceGuideLink = document.getElementById('voice-guide-link');
+
+  let selectedType = 'accident';
+
+  emergencyTypeButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      emergencyTypeButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      selectedType = button.getAttribute('data-type');
+    });
+  });
+
+  sosButton.addEventListener('click', async () => {
+    sosButton.disabled = true;
+    dispatchStatus.textContent = 'Requesting emergency response...';
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            const response = await fetch('/api/emergencies/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ latitude, longitude, emergency_type: selectedType, notes: 'SOS button triggered' })
+            });
+
+            if (response.ok) {
+              dispatchStatus.innerHTML = '✓ Emergency response dispatched. Stay on the line.';
+            } else {
+              dispatchStatus.innerHTML = 'Error: Could not dispatch. Try again.';
+              sosButton.disabled = false;
+            }
+          } catch (error) {
+            console.error('Dispatch error:', error);
+            dispatchStatus.innerHTML = 'Network error. Check your connection.';
+            sosButton.disabled = false;
+          }
+        },
+        () => {
+          dispatchStatus.innerHTML = 'Location access required for dispatch.';
+          sosButton.disabled = false;
+        }
+      );
+    } else {
+      dispatchStatus.innerHTML = 'Geolocation not available.';
+      sosButton.disabled = false;
+    }
+  });
+
+  voiceGuideLink.addEventListener('click', () => {
+    window.open('/static/first-aid-guide.html', '_blank');
+  });
+</script>
+
 {% endblock %}
