@@ -2,6 +2,7 @@ FROM python:3.12-slim
 
 # Injects the missing C-libraries directly into the isolated container space
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    g++ \
     binutils \
     libproj-dev \
     gdal-bin \

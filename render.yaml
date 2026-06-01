@@ -1,24 +1,26 @@
 services:
   - type: web
-    name: bodasos
-    env: python
-    buildCommand: ./build.sh
-    startCommand: bash -lc "python manage.py migrate --noinput && gunicorn salamanoda.wsgi:application --bind 0.0.0.0:$PORT"
+    name: bodaSOS
+    env: docker
+    dockerfilePath: ./Dockerfile
+    releaseCommand: bash release.sh
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: POSTGIS_ENABLED
-        value: "true"
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.production
       - key: SECRET_KEY
         sync: false
       - key: DEBUG
         value: "false"
+      - key: POSTGIS_ENABLED
+        value: "false"
       - key: AFRICASTALKING_USERNAME
-        sync: false
+        value: Pesaree
       - key: AFRICASTALKING_API_KEY
         sync: false
       - key: AFRICASTALKING_SENDER_ID
-        sync: false
+        value: AFRICASTKNG
       - key: REDIS_URL
         sync: false
