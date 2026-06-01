@@ -30,3 +30,5 @@ weasyprint==66.0
 whitenoise==6.9.0
 sentry-sdk==1.27.0
 celery==5.3.6
+django-celery-beat
+
