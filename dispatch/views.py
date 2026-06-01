@@ -388,14 +388,19 @@ def dashboard_metrics_api(request):
     active_riders = Rider.objects.filter(status=Rider.DispatchStatus.ACTIVE).count()
 
     # average response time (completed requests)
-    avg_duration = (
-        EmergencyRequest.objects.filter(status=EmergencyRequest.Status.COMPLETED)
-        .annotate(duration=ExpressionWrapper(F("updated_at") - F("created_at"), output_field=DurationField()))
-        .aggregate(avg=Avg("duration"))
-    )
     avg_seconds = None
-    if avg_duration and avg_duration.get("avg"):
-        avg_seconds = int(avg_duration["avg"].total_seconds())
+    try:
+        avg_duration = (
+            EmergencyRequest.objects.filter(status=EmergencyRequest.Status.COMPLETED)
+            .annotate(duration=ExpressionWrapper(F("updated_at") - F("created_at"), output_field=DurationField()))
+            .aggregate(avg=Avg("duration"))
+        )
+        if avg_duration and avg_duration.get("avg"):
+            # avg_duration['avg'] is a timedelta
+            avg_seconds = int(avg_duration["avg"].total_seconds())
+    except Exception as e:
+        logger.debug("Could not compute avg response duration: %s", e)
+        avg_seconds = None
 
     types = list(
         EmergencyRequest.objects.values("emergency_type").annotate(count=Count("id")).order_by("emergency_type")
