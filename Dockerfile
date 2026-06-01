@@ -31,4 +31,4 @@ ENV ALLOWED_HOSTS=localhost,127.0.0.1
 RUN python manage.py makemigrations core accounts saccos riders patients dispatch notifications reports --noinput
 RUN python manage.py collectstatic --noinput
 
-CMD ["sh", "-c", "gunicorn salamanoda.wsgi:application --bind 0.0.0.0:${PORT:-10000}"]
+CMD ["sh", "-c", "daphne -b 0.0.0.0 -p ${PORT:-10000} salamanoda.asgi:application"]

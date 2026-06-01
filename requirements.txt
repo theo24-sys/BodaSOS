@@ -3,6 +3,7 @@ africastalking==1.2.9
 certifi==2026.5.20
 channels==4.2.0
 channels-redis==4.2.0
+daphne==4.1.2
 charset-normalizer==3.4.7
 click==8.4.1
 dj-database-url==2.3.0
