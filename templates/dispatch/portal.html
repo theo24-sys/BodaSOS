@@ -5,13 +5,13 @@
   <div class="eyebrow">Operator & responder terminal</div>
   <h1>{{ role_label }}</h1>
   <p class="subhead">
-    This terminal stays hidden from public patients. It shows the secure surfaces for admin, riders, and Sacco leadership only.
+    This terminal stays hidden from public patients. It shows secure surfaces for authorized riders and Sacco leadership.
   </p>
   <div class="stat-grid">
     <div class="stat"><strong>{{ current_role }}</strong><span>Active role</span></div>
     <div class="stat"><strong>{% if rider_profile %}Yes{% else %}No{% endif %}</strong><span>Rider profile</span></div>
     <div class="stat"><strong>{% if chairman_sacco %}Yes{% else %}No{% endif %}</strong><span>Chairman sacco</span></div>
-    <div class="stat"><strong>{% if request.user.is_superuser %}Yes{% else %}No{% endif %}</strong><span>System admin</span></div>
+    {# System admin visibility removed from public portal display #}
   </div>
 </section>
 
@@ -49,18 +49,16 @@
       {% if chairman_sacco %}
         <a class="button" href="{% url 'sacco_dashboard' chairman_sacco.slug %}?token={{ chairman_sacco.access_token }}">Open Sacco dashboard</a>
       {% endif %}
-      {% if request.user.is_superuser %}
-        <span class="badge success">Admin access is hidden</span>
-      {% endif %}
+      {# Do not surface admin labels in the portal UI #}
     </div>
   </div>
 </div>
 
 <div class="dashboard-grid" style="margin-top:18px;">
   <div class="card col-4">
-    <div class="panel-head"><div><h2 class="panel-title">Secure operations</h2><div class="panel-lead">The admin console is hidden behind a strong, randomized route.</div></div></div>
+    <div class="panel-head"><div><h2 class="panel-title">Secure operations</h2><div class="panel-lead">Sensitive routes are protected and environment-configured.</div></div></div>
     <div class="surface">
-      <p>System admin access is kept out of the public workflow. Use the environment-configured internal gateway URL.</p>
+      <p>Operator routes are kept out of the public workflow and require proper credentials or sacco tokens.</p>
     </div>
   </div>
   <div class="card col-4">
