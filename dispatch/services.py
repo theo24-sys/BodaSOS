@@ -1,8 +1,9 @@
 from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point
 from django.core.cache import cache
 from django.utils import timezone
 
-from .models import DispatchAttempt
+from .models import DispatchAttempt, EmergencyRequest
 from riders.models import Rider
 from notifications.services import send_dispatch_alert
 
@@ -19,6 +20,60 @@ def get_nearest_rider(location, exclude_rider_ids=[]):
     ).annotate(
         distance=Distance('current_location', location)
     ).order_by('distance').first()
+
+
+def find_nearest_rider(latitude, longitude):
+    """
+    Find nearest rider by latitude/longitude coordinates.
+    Returns a candidate object with rider and distance_km attributes.
+    """
+    from collections import namedtuple
+    
+    # Create a point from coordinates
+    location = Point(float(longitude), float(latitude))
+    
+    # Find nearest active rider
+    rider = Rider.objects.filter(
+        status=Rider.DispatchStatus.ACTIVE
+    ).annotate(
+        distance=Distance('point', location)
+    ).order_by('distance').first()
+    
+    if not rider:
+        return None
+    
+    # Return a named tuple with rider and distance_km for compatibility
+    Candidate = namedtuple('Candidate', ['rider', 'distance_km'])
+    distance_km = rider.distance.km if rider.distance else 0
+    return Candidate(rider=rider, distance_km=distance_km)
+
+
+def assign_nearest_rider(emergency):
+    """
+    Assign the nearest available rider to an emergency request.
+    """
+    if not isinstance(emergency, EmergencyRequest):
+        return None
+    
+    # Find nearest rider
+    location = Point(float(emergency.longitude), float(emergency.latitude))
+    rider = Rider.objects.filter(
+        status=Rider.DispatchStatus.ACTIVE
+    ).annotate(
+        distance=Distance('point', location)
+    ).order_by('distance').first()
+    
+    if rider:
+        emergency.assigned_rider = rider
+        emergency.status = EmergencyRequest.Status.ASSIGNED
+        emergency.save()
+        # Send notification to rider
+        send_dispatch_alert(rider, emergency)
+    else:
+        emergency.status = EmergencyRequest.Status.NO_RIDER_FOUND
+        emergency.save()
+    
+    return emergency
 
 
 def trigger_dispatch(job):
