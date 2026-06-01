@@ -5,20 +5,19 @@ from django.urls import include, path
 
 from core.health import health_check
 
-api_urlpatterns = [
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("health/", health_check, name="health_check"),
+    path("api/v1/", include(("api.v1.urls", "api"), namespace="v1")),
+    path("auth/", include("django.contrib.auth.urls")),
+
+    # HTML/PWA Web views at root
     path("accounts/", include("accounts.urls")),
     path("patients/", include("patients.urls")),
     path("riders/", include("riders.urls")),
     path("saccos/", include("saccos.urls")),
-    path("dispatch/", include("dispatch.urls")),
     path("reports/", include("reports.urls")),
-]
-
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("health/", health_check, name="health_check"),
-    path("api/v1/", include((api_urlpatterns, "api"), namespace="v1")),
-    path("auth/", include("django.contrib.auth.urls")),
+    path("", include("dispatch.urls")),
 ]
 
 if settings.DEBUG:
