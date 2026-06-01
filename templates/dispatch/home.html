@@ -122,6 +122,9 @@
   </div>
 </div>
 
+<!-- Persistent one-tap emergency button for mobile -->
+<button id="one-tap-emergency" aria-label="One tap emergency" style="position:fixed;right:18px;bottom:18px;border-radius:999px;width:72px;height:72px;border:none;background:#ff6b00;color:#fff;font-size:28px;box-shadow:0 12px 30px rgba(0,0,0,0.24);display:grid;place-items:center;z-index:1100;">✚</button>
+
 <style>
   .error-box { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
   .hidden-field { display: none !important; }
@@ -397,5 +400,46 @@
       showManualSection();
     }
   });
+
+  // One-tap emergency button
+  const oneTap = document.getElementById('one-tap-emergency');
+  if (oneTap) {
+    oneTap.addEventListener('click', () => {
+      // attempt high-accuracy location then post
+      statusText.textContent = 'Requesting location...';
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const payload = {
+            device_session_id: getDeviceSessionId(),
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            note: document.getElementById('id_notes') ? document.getElementById('id_notes').value : ''
+          };
+          fetch('/api/anonymous-trigger/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data && data.status === 'ok') {
+                statusText.textContent = 'Emergency sent. Help is on its way.';
+                oneTap.disabled = true;
+                oneTap.style.opacity = 0.6;
+              } else {
+                statusText.textContent = 'Could not send emergency. Try again.';
+              }
+            })
+            .catch(() => {
+              statusText.textContent = 'Network error sending emergency. Try again.';
+            });
+        },
+        (err) => {
+          statusText.textContent = 'Location required. Use detect location or enter manually.';
+        },
+        { enableHighAccuracy: true, timeout: 12000 }
+      );
+    });
+  }
 </script>
 {% endblock %}

@@ -15,6 +15,27 @@
         <div class="panel-lead">Approve or suspend riders under this Sacco only.</div>
       </div>
     </div>
+    <div class="panel-head">
+      <div>
+        <h3 class="panel-title">Create rider account</h3>
+        <div class="panel-lead">Quickly create a rider account and send credentials to the phone.</div>
+      </div>
+    </div>
+    <form method="post" class="stack-form" style="margin-bottom:14px;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_rider">
+      <div class="field-group">
+        <label for="new_rider_name">Full name</label>
+        <input id="new_rider_name" name="new_rider_name" placeholder="John Doe">
+      </div>
+      <div class="field-group">
+        <label for="new_rider_phone">Phone number</label>
+        <input id="new_rider_phone" name="new_rider_phone" placeholder="0710xxxxxx">
+      </div>
+      <div class="inline-actions">
+        <input type="submit" class="button" value="Create rider">
+      </div>
+    </form>
     <table>
       <thead>
         <tr>

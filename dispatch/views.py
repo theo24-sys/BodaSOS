@@ -296,6 +296,21 @@ def sacco_dashboard(request, slug: str):
         return HttpResponse("Invalid sacco dashboard token.", status=403)
 
     if request.method == "POST":
+        # allow sacco admins to approve/reject or create riders
+        if request.POST.get("action") == "create_rider":
+            phone = request.POST.get("new_rider_phone")
+            full_name = request.POST.get("new_rider_name")
+            if phone and full_name and (request.user.is_superuser or getattr(request.user, "chairman_sacco", None) == sacco):
+                # create user and rider profile
+                from accounts.services import create_rider_account
+
+                user = create_rider_account(phone, sacco.id, full_name)
+                Rider.objects.create(user=user, sacco=sacco, full_name=full_name, phone=phone)
+                messages.success(request, f"Created rider {full_name} ({phone}).")
+            else:
+                messages.error(request, "Missing or invalid rider details.")
+            return redirect(f"{request.path}?token={token}")
+
         rider = get_object_or_404(Rider, pk=request.POST.get("rider_id"), sacco=sacco)
         action = request.POST.get("action")
         if action == "approve":
