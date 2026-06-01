@@ -45,7 +45,7 @@
       <p><strong>National ID:</strong> {{ rider.national_id }}</p>
       <p><strong>NTSA License:</strong> {{ rider.ntsa_license_number }}</p>
       <p><strong>Sacco approval:</strong> {{ rider.sacco_approval_status }}</p>
-      <p><strong>Verified:</strong> {% if rider.is_verified %}Yes{% else %}Pending admin review{% endif %}</p>
+      <p><strong>Verified:</strong> {% if rider.is_verified %}Yes{% else %}Pending operator review{% endif %}</p>
     </div>
   </div>
 </div>

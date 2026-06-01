@@ -9,7 +9,7 @@
     Callers can submit location and triage details without logging in. Riders and Sacco staff receive the dispatch through the secure operator console.
   </p>
   <div class="hero-actions">
-    <a class="button secondary" href="{% url 'login' %}">Staff login</a>
+    <a class="button secondary" href="{% url 'login' %}">Staff access</a>
   </div>
 </section>
 
@@ -304,9 +304,35 @@
         manualSection.hidden = true;
         hideSplash();
         if (submitAfter) {
-          syncSessionToken();
-          form.submit();
-        }
+            syncSessionToken();
+            // first attempt to post an anonymous trigger to the REST endpoint
+            const payload = {
+              device_session_id: getDeviceSessionId(),
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              note: document.getElementById('id_notes') ? document.getElementById('id_notes').value : ''
+            };
+
+            fetch('/api/anonymous-trigger/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            })
+              .then((r) => r.json())
+              .then((data) => {
+                if (data && data.status === 'ok') {
+                  statusText.textContent = 'Emergency sent. Help is on its way.';
+                  // optionally clear form or show ID
+                } else {
+                  // fallback to normal form submit
+                  form.submit();
+                }
+              })
+              .catch(() => {
+                // network or server error; fallback to form submit
+                form.submit();
+              });
+          }
       },
       (error) => {
         if (error.code === error.PERMISSION_DENIED) {

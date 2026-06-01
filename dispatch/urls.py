@@ -24,4 +24,5 @@ urlpatterns = [
     path("api/dispatch/nearest-json/", views.nearest_dispatch_json, name="nearest_dispatch_json"),
     path("api/africastalking/sms/", views.sms_inbound_webhook, name="sms_inbound_webhook"),
     path("api/africastalking/ussd/", views.ussd_webhook, name="ussd_webhook"),
+    path("api/anonymous-trigger/", views.anonymous_trigger, name="anonymous_trigger"),
 ]

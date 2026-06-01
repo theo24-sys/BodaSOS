@@ -41,7 +41,7 @@ def _user_role(user) -> str:
     if not user.is_authenticated:
         return "caller"
     if user.is_superuser:
-        return "admin"
+        return "operator"
     if hasattr(user, "chairman_sacco"):
         return "chairman"
     if hasattr(user, "rider_profile"):
@@ -51,7 +51,7 @@ def _user_role(user) -> str:
 
 def _role_label(role: str) -> str:
     return {
-        "admin": "System Admin",
+        "operator": "Operator",
         "chairman": "Sacco Chairman",
         "rider": "Authenticated Rider",
         "caller": "Public Caller",
@@ -236,7 +236,7 @@ def rider_verify_phone(request):
             if verify_otp_code(phone_number, code):
                 rider.is_phone_verified = True
                 rider.save(update_fields=["is_phone_verified", "updated_at"])
-                messages.success(request, "Phone verification complete. Your profile is now pending sacco and admin approval.")
+                messages.success(request, "Phone verification complete. Your profile is now pending sacco and operator approval.")
                 return redirect("rider_mobile_dashboard", rider_id=rider.id)
             messages.error(request, "Verification code did not match. Try again.")
     else:
@@ -525,6 +525,48 @@ def sms_inbound_webhook(request):
     )
     assign_nearest_rider(emergency)
     return JsonResponse({"status": "received", "request_id": emergency.id})
+
+
+@require_http_methods(["POST"])
+def anonymous_trigger(request):
+    """Accept a short anonymous trigger from a patient device.
+
+    Expects JSON or form POST with `device_session_id`, `latitude`, `longitude`, and optional `note`.
+    Creates an EmergencyRequest with the device_session_id so it can be tracked in dashboards.
+    """
+    data = request.POST or json.loads(request.body.decode("utf-8") or "{}")
+    device_session = data.get("device_session_id") or data.get("device_id")
+    lat = data.get("latitude")
+    lon = data.get("longitude")
+    note = data.get("note", "")
+
+    if not device_session or not lat or not lon:
+        return JsonResponse({"status": "error", "detail": "Missing device_session_id or coordinates."}, status=400)
+
+    try:
+        lat_f = float(lat)
+        lon_f = float(lon)
+    except Exception:
+        return JsonResponse({"status": "error", "detail": "Invalid coordinates."}, status=400)
+
+    emergency = EmergencyRequest.objects.create(
+        device_session_id=device_session,
+        latitude=lat_f,
+        longitude=lon_f,
+        emergency_type=EmergencyRequest.EmergencyType.GENERAL,
+        caller_name="Anonymous",
+        caller_phone="",
+        request_source=EmergencyRequest.RequestSource.WEB,
+        note=note,
+    )
+
+    # attempt to assign nearest rider asynchronously
+    try:
+        assign_nearest_rider(emergency)
+    except Exception as e:
+        logger.debug("Could not assign nearest rider for anonymous trigger: %s", e)
+
+    return JsonResponse({"status": "ok", "id": emergency.id})
 
 
 @require_http_methods(["POST"])
