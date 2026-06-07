@@ -39,7 +39,7 @@
       </div>
     </div>
     <div id="map" style="height:480px;border-radius:14px;overflow:hidden;"></div>
-    <div style="margin-top:8px;font-size:0.92rem;color:#6b7280;">
+    <div style="margin-top:8px;font-size:0.92rem;color:var(--muted);">
       <strong>Legend:</strong>
       <span style="display:inline-block;margin-left:8px;">● <span style="color:#10b981">Rider</span></span>
       <span style="display:inline-block;margin-left:12px;">📍 <span style="color:#ff6b00">Incident</span></span>
@@ -105,8 +105,9 @@ let heatLayer;
 
 function initMap() {
   map = L.map('map').setView([0.0236, 37.9062], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
   clusterGroup = L.markerClusterGroup();
   riderLayer = L.layerGroup();
@@ -168,9 +169,25 @@ function renderCharts(byType) {
     type: 'bar',
     data: {
       labels: labels,
-      datasets: [{ label: 'Incidents', data: data, backgroundColor: '#ffb27a' }]
+      datasets: [{ label: 'Incidents', data: data, backgroundColor: '#FF6B00', borderRadius: 8 }]
     },
-    options: { responsive: true, maintainAspectRatio: false }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          grid: { color: '#E2E8F0' },
+          ticks: { color: '#475569' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#475569' }
+        }
+      }
+    }
   });
 }
 
